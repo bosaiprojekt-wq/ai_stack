@@ -29,3 +29,5 @@ qdrant/backups/
 # system Windows
 Thumbs.db
 Desktop.ini
+
+venv
