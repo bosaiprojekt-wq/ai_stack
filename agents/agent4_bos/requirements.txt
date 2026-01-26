@@ -2,4 +2,5 @@ fastapi
 uvicorn
 langchain
 langchain-community
-qdrant-client
+python-multipart
+Jinja2

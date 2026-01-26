@@ -1,0 +1,782 @@
+# form_app/run_app.py - AI Interface sub-app with fixed response display
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+run_app = FastAPI(title="AI Interface", description="Web interface for AI response generation")
+
+# Add CORS to allow fetch requests
+run_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+RUN_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agent4 BOS - Generowanie odpowiedzi AI</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            background: white;
+            border-radius: 12px; 
+            padding: 30px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: #2c3e50; 
+            text-align: center; 
+            margin-bottom: 30px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        label { 
+            display: block; 
+            margin-top: 15px; 
+            font-weight: 600; 
+            color: #34495e;
+        }
+        textarea, input[type="text"] { 
+            width: 100%; 
+            padding: 12px; 
+            margin-top: 8px; 
+            border: 2px solid #ddd; 
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        textarea:focus, input[type="text"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        textarea { 
+            height: 180px; 
+            resize: vertical; 
+            font-family: monospace;
+        }
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .btn { 
+            padding: 14px 28px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .btn-success { 
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white; 
+        }
+        .btn-danger { 
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white; 
+        }
+        .btn-info { 
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white; 
+        }
+        .message {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 6px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .success { 
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724; 
+            border-left: 4px solid #28a745;
+        }
+        .error { 
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24; 
+            border-left: 4px solid #dc3545;
+        }
+        .info { 
+            background: linear-gradient(135deg, #e8f4fd 0%, #d1ecf1 100%);
+            color: #004085; 
+            border-left: 4px solid #3498db;
+        }
+        
+        /* Modal/Response Window */
+        .response-window {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            z-index: 1000;
+            overflow: hidden;
+            animation: modalFadeIn 0.3s ease;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .modal-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        .modal-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .modal-content {
+            padding: 25px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .response-text {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 20px;
+        }
+        .response-meta {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #b8daff;
+            font-size: 14px;
+        }
+        .response-meta div {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .response-meta i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 12px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1001;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .example-queries {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .example-item {
+            padding: 15px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .example-item:hover {
+            background: #f0f7ff;
+            border-color: #3498db;
+            transform: translateY(-2px);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .nav-links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+        .nav-links a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+        .nav-links a:hover {
+            background: #f0f7ff;
+            transform: translateX(5px);
+        }
+    </style>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-robot"></i> Agent4 BOS - Generowanie odpowiedzi AI</h1>
+        
+        <div class="section">
+            <div class="model-info">
+                <h3><i class="fas fa-info-circle"></i> Informacje o modelu</h3>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value">Llama 3</div>
+                        <div class="stat-label">Model AI</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">/run</div>
+                        <div class="stat-label">Endpoint</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">GPT-4</div>
+                        <div class="stat-label">Jakość</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3><i class="fas fa-edit"></i> Wprowadź zapytanie</h3>
+            
+            <div id="message" class="message"></div>
+            
+            <form id="runForm">
+                <label for="inputField"><i class="fas fa-keyboard"></i> Zadanie/pytanie do AI:</label>
+                <textarea id="inputField" name="input" placeholder="Przykład: Przygotuj odpowiedź dla studenta dotyczącą urlopu dziekańskiego z przyczyn zdrowotnych. Wyjaśnij procedurę, wymagane dokumenty i terminy." required></textarea>
+                
+                <label for="contextField"><i class="fas fa-comment-alt"></i> Kontekst (opcjonalnie):</label>
+                <input type="text" id="contextField" name="context" placeholder="Np. student choruje, potrzebuje urlopu dziekańskiego">
+                
+                <div class="btn-container">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-rocket"></i> Generuj odpowiedź
+                    </button>
+                    <button type="button" onclick="clearForm()" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Wyczyść formularz
+                    </button>
+                    <button type="button" onclick="testConnection()" class="btn btn-info">
+                        <i class="fas fa-wifi"></i> Test połączenia
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="section">
+            <h3><i class="fas fa-lightbulb"></i> Przykładowe zapytania</h3>
+            <div class="example-queries">
+                <div class="example-item" onclick="fillExample(0)">
+                    <i class="fas fa-graduation-cap"></i>
+                    <strong>Urlop dziekański</strong>
+                    <p>Procedura i dokumenty</p>
+                </div>
+                <div class="example-item" onclick="fillExample(1)">
+                    <i class="fas fa-home"></i>
+                    <strong>Opłaty akademik</strong>
+                    <p>Zaległości i konsekwencje</p>
+                </div>
+                <div class="example-item" onclick="fillExample(2)">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Skarga na wykładowcę</strong>
+                    <p>Procedura składania</p>
+                </div>
+                <div class="example-item" onclick="fillExample(3)">
+                    <i class="fas fa-award"></i>
+                    <strong>Stypendium rektora</strong>
+                    <p>Kryteria i dokumenty</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="nav-links">
+            <a href="/">
+                <i class="fas fa-arrow-left"></i> Powrót do głównej strony
+            </a>
+            <a href="/form">
+                <i class="fas fa-file-alt"></i> Formularz przypadków
+            </a>
+            <a href="/docs" target="_blank">
+                <i class="fas fa-book"></i> Dokumentacja API
+            </a>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <h3>Generowanie odpowiedzi...</h3>
+        <p>AI przetwarza Twoje zapytanie. To może zająć kilka sekund.</p>
+        <div id="loadingProgress"></div>
+    </div>
+    
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+    
+    <!-- Response Window Modal -->
+    <div class="response-window" id="responseWindow">
+        <div class="modal-header">
+            <h2><i class="fas fa-robot"></i> Wygenerowana odpowiedź</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-content">
+            <div class="response-text" id="responseContent">
+                Tutaj pojawi się wygenerowana odpowiedź...
+            </div>
+            
+            <div class="response-meta" id="responseMeta">
+                <div><i class="fas fa-cogs"></i> <strong>Model:</strong> <span id="modelName">ładowanie...</span></div>
+                <div><i class="fas fa-clock"></i> <strong>Czas:</strong> <span id="responseTime">0.0s</span></div>
+                <div><i class="fas fa-database"></i> <strong>Kolekcja:</strong> <span id="collectionName">agent4_bos</span></div>
+                <div><i class="fas fa-calendar"></i> <strong>Data:</strong> <span id="responseDate">-</span></div>
+            </div>
+            
+            <div class="btn-container" style="margin-top: 20px;">
+                <button onclick="copyToClipboard()" class="btn btn-success">
+                    <i class="fas fa-copy"></i> Kopiuj odpowiedź
+                </button>
+                <button onclick="downloadResponse()" class="btn btn-info">
+                    <i class="fas fa-download"></i> Pobierz jako TXT
+                </button>
+                <button onclick="closeModal()" class="btn btn-danger">
+                    <i class="fas fa-times"></i> Zamknij
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Section -->
+    <div class="section" id="statsSection" style="display: none;">
+        <h3><i class="fas fa-chart-bar"></i> Statystyki odpowiedzi</h3>
+        <div class="stats" id="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalResponses">0</div>
+                <div class="stat-label">Wygenerowanych odpowiedzi</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="avgResponseTime">0s</div>
+                <div class="stat-label">Średni czas</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalCharacters">0</div>
+                <div class="stat-label">Znaków wygenerowano</div>
+            </div>
+        </div>
+    </div>
+
+        <script>
+        // Example queries with escaped newlines
+        const examples = [
+            "Przygotuj szczegółową odpowiedź dla studenta dotyczącą urlopu dziekańskiego z przyczyn zdrowotnych. \\n\\nUwzględnij:\\n1. Procedurę składania wniosku\\n2. Wymagane dokumenty (zaświadczenie lekarskie, wniosek)\\n3. Terminy rozpatrzenia\\n4. Wpływ na stypendium\\n5. Kontakt do właściwego wydziału",
+            
+            "Sformułuj oficjalne pismo do studenta w sprawie zaległych opłat za akademik. \\n\\nStruktura:\\n1. Nagłówek z danymi uczelni\\n2. Informacja o zaległościach\\n3. Konsekwencje prawne\\n4. Termin płatności\\n5. Dane do kontaktu\\n6. Podpis",
+            
+            "Opisz procedurę składania skargi na wykładowcę. \\n\\nKroki:\\n1. Zebranie dowodów\\n2. Sporządzenie formalnej skargi\\n3. Wskazanie konkretnych zarzutów\\n4. Złożenie w dziekanacie\\n5. Terminy rozpatrzenia\\n6. Możliwe decyzje\\n7. Odwołania",
+            
+            "Przygotuj informację o stypendium rektora dla najlepszych studentów. \\n\\nSzczegóły:\\n1. Kryteria kwalifikacyjne (średnia ocen)\\n2. Wymagane dokumenty\\n3. Terminy składania wniosków\\n4. Wysokość stypendium\\n5. Okres wypłacania\\n6. Procedura odwoławcza"
+        ];
+        
+        const exampleContexts = [
+            "Student choruje, potrzebuje urlopu dziekańskiego na semestr letni",
+            "Zaległości w opłatach za mieszkanie w akademiku od 3 miesięcy",
+            "Problemy z prowadzącym zajęcia - nieobecności, brak konsultacji",
+            "Dotyczy najlepszych studentów, średnia powyżej 4.5, I rok studiów"
+        ];
+        
+        // Statistics tracking
+        let stats = {
+            totalResponses: 0,
+            totalResponseTime: 0,
+            totalCharacters: 0,
+            responses: []
+        };
+        
+        // Load stats from localStorage
+        function loadStats() {
+            const saved = localStorage.getItem('aiResponseStats');
+            if (saved) {
+                stats = JSON.parse(saved);
+            }
+            updateStatsDisplay();
+        }
+        
+        // Save stats to localStorage
+        function saveStats() {
+            localStorage.setItem('aiResponseStats', JSON.stringify(stats));
+        }
+        
+        function fillExample(index) {
+            if (index >= 0 && index < examples.length) {
+                document.getElementById('inputField').value = examples[index].replace(/\\n/g, '\n');
+                document.getElementById('contextField').value = exampleContexts[index];
+                showMessage('success', 'Przykład ' + (index + 1) + ' załadowany!');
+            }
+        }
+        
+        function clearForm() {
+            document.getElementById('runForm').reset();
+            showMessage('info', 'Formularz wyczyszczony. Możesz wprowadzić nowe zapytanie.');
+        }
+        
+        function showMessage(type, text) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.className = 'message ' + type;
+            msgDiv.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle') + '"></i> ' + text;
+            msgDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            let dots = 0;
+            const progress = document.getElementById('loadingProgress');
+            
+            const interval = setInterval(() => {
+                dots = (dots + 1) % 4;
+                if (progress) {
+                    progress.innerHTML = 'Trwa generowanie' + '.'.repeat(dots);
+                }
+            }, 500);
+            
+            return interval;
+        }
+        
+        function hideLoading(interval) {
+            document.getElementById('loading').style.display = 'none';
+            if (interval) clearInterval(interval);
+        }
+        
+        function showResponseModal(response, responseTime) {
+            // Update response content
+            document.getElementById('responseContent').textContent = response.draft || response.message || 'Brak odpowiedzi';
+            
+            // Update metadata
+            document.getElementById('modelName').textContent = response.model || 'Llama 3';
+            document.getElementById('responseTime').textContent = responseTime + 's';
+            document.getElementById('collectionName').textContent = response.collection || 'agent4_bos';
+            document.getElementById('responseDate').textContent = new Date().toLocaleString('pl-PL');
+            
+            // Show modal and overlay
+            document.getElementById('responseWindow').style.display = 'block';
+            document.getElementById('modalOverlay').style.display = 'block';
+            
+            // Update stats
+            updateStats(response.draft || '', responseTime);
+        }
+        
+        function closeModal() {
+            document.getElementById('responseWindow').style.display = 'none';
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+        
+        function updateStats(responseText, responseTime) {
+            // Update stats
+            stats.totalResponses++;
+            stats.totalResponseTime += responseTime;
+            stats.totalCharacters += responseText.length;
+            stats.responses.push({
+                time: responseTime,
+                length: responseText.length,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Keep only last 50 responses
+            if (stats.responses.length > 50) {
+                stats.responses = stats.responses.slice(-50);
+            }
+            
+            // Save and display
+            saveStats();
+            updateStatsDisplay();
+            
+            // Show stats section
+            document.getElementById('statsSection').style.display = 'block';
+        }
+        
+        function updateStatsDisplay() {
+            document.getElementById('totalResponses').textContent = stats.totalResponses;
+            
+            const avgTime = stats.totalResponses > 0 
+                ? (stats.totalResponseTime / stats.totalResponses).toFixed(1)
+                : 0;
+            document.getElementById('avgResponseTime').textContent = avgTime + 's';
+            
+            document.getElementById('totalCharacters').textContent = stats.totalCharacters.toLocaleString();
+        }
+        
+        function copyToClipboard() {
+            const responseText = document.getElementById('responseContent').textContent;
+            navigator.clipboard.writeText(responseText).then(() => {
+                showMessage('success', 'Odpowiedź skopiowana do schowka!');
+            }).catch(err => {
+                showMessage('error', 'Błąd kopiowania: ' + err);
+            });
+        }
+        
+        function downloadResponse() {
+            const responseText = document.getElementById('responseContent').textContent;
+            const meta = 'Model: ' + document.getElementById('modelName').textContent + '\\n' +
+                        'Czas: ' + document.getElementById('responseTime').textContent + '\\n' +
+                        'Data: ' + document.getElementById('responseDate').textContent + '\\n\\n';
+            
+            const blob = new Blob([meta + responseText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ai-response-' + new Date().toISOString().slice(0,10) + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage('success', 'Odpowiedź pobrana!');
+        }
+        
+        function testConnection() {
+            fetch('/health')
+                .then(response => response.json())
+                .then(data => {
+                    showMessage('success', 'Połączenie OK! Status: ' + data.status);
+                })
+                .catch(error => {
+                    showMessage('error', 'Błąd połączenia: ' + error.message);
+                });
+        }
+        
+        document.getElementById('runForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const input = document.getElementById('inputField').value;
+            const context = document.getElementById('contextField').value;
+            
+            if (!input.trim()) {
+                showMessage('error', 'Proszę wprowadzić zapytanie do AI');
+                return;
+            }
+            
+            // Prepare payload
+            let payload = { 
+                input: input,
+                timestamp: new Date().toISOString()
+            };
+            if (context.trim()) {
+                payload.context = context;
+            }
+            
+            // Show loading
+            const loadingInterval = showLoading();
+            const startTime = Date.now();
+            
+            try {
+                // Call the API endpoint
+                const response = await fetch('/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const endTime = Date.now();
+                const responseTime = ((endTime - startTime) / 1000).toFixed(1);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error('HTTP ' + response.status + ': ' + errorText);
+                }
+                
+                const result = await response.json();
+                
+                // Hide loading
+                hideLoading(loadingInterval);
+                
+                // Show response in modal
+                showResponseModal(result, responseTime);
+                
+                // Clear form after successful response
+                clearForm();
+                
+            } catch (error) {
+                hideLoading(loadingInterval);
+                showMessage('error', 'Błąd: ' + error.message);
+                console.error('API Error:', error);
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter to submit
+            if (e.ctrlKey && e.key === 'Enter') {
+                document.getElementById('runForm').dispatchEvent(new Event('submit'));
+                e.preventDefault();
+            }
+            // Escape to close modal
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        // Auto-fill random example on page load
+        window.onload = function() {
+            loadStats();
+            const randomIndex = Math.floor(Math.random() * examples.length);
+            fillExample(randomIndex);
+            
+            // Show welcome message
+            setTimeout(() => {
+                showMessage('info', 'Witaj! Wybierz przykład lub wpisz własne zapytanie.');
+            }, 1000);
+        };
+        
+        // Close modal when clicking overlay
+        document.getElementById('modalOverlay').addEventListener('click', closeModal);
+        
+        // Prevent modal close when clicking inside modal
+        document.getElementById('responseWindow').addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    </script>
+</body>
+</html>
+"""
+
+@run_app.get("/")
+async def get_run_page(request: Request):
+    """Serve the AI response generation HTML page"""
+    return HTMLResponse(RUN_HTML)
+
+@run_app.get("/test")
+async def test_endpoint():
+    """Test endpoint to verify the sub-app is working"""
+    return JSONResponse({
+        "status": "ok",
+        "message": "Run page app is working",
+        "timestamp": datetime.datetime.now().isoformat()
+    })

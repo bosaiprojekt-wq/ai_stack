@@ -1,150 +1,299 @@
-import os
-from typing import Dict, Any
-from fastapi import FastAPI, HTTPException
+# app.py - Main FastAPI application
+import json
+import datetime
+from pathlib import Path
+from fastapi import FastAPI, Body, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 from langchain_community.chat_models import ChatOllama
-from pydantic import BaseModel
-import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Import form_app components
+from form_app.form_app import form_app
+from form_app.run_app import run_app
+
+# =========================
+# MAIN APP CONFIGURATION
+# =========================
 
 app = FastAPI(
-    title="Ollama Draft Generator API",
-    description="API for generating draft responses using Ollama LLM",
+    title="Agent4 BOS Support",
+    description="Main application launcher with AI agent capabilities",
     version="1.0.0"
 )
 
-# Initialize the LLM with better configuration
-try:
-    llm = ChatOllama(
-        model=os.getenv("OLLAMA_MODEL", "llama3"),
-        base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        temperature=0.7,
-        timeout=60  # Add timeout to prevent hanging requests
-    )
-    logger.info(f"LLM initialized with model: {os.getenv('OLLAMA_MODEL', 'llama3')}")
-except Exception as e:
-    logger.error(f"Failed to initialize LLM: {e}")
-    llm = None
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Environment variables
-COLLECTION = os.getenv("COLLECTION", "agent4_bos")
+# LLM Configuration
+llm = ChatOllama(
+    model="llama3",
+    base_url="http://ollama:11434"
+)
 
-# Pydantic models for request/response validation
-class RunRequest(BaseModel):
-    input: str
-    max_length: int = 500  # Optional parameter with default
-    
-class RunResponse(BaseModel):
-    draft: str
-    collection: str
-    status: str = "success"
+# Mount sub-applications
+app.mount("/form", form_app)
+app.mount("/run_page", run_app)  # Note: This is separate from the /run API endpoint
 
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "draft-generator",
-        "collection": COLLECTION,
-        "llm_available": llm is not None
-    }
+# JSON folder for main app
+JSON_FOLDER = Path("./json_database_handling/json_folder")
+
+# =========================
+# MAIN APP ROUTES
+# =========================
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    """Main landing page with links to all services"""
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Agent4 BOS - Main Dashboard</title>
+        <style>
+            body { 
+                font-family: Arial, sans-serif; 
+                max-width: 1000px; 
+                margin: 40px auto; 
+                padding: 20px; 
+            }
+            .header { 
+                text-align: center; 
+                margin-bottom: 40px; 
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 10px;
+            }
+            .dashboard {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
+                margin-top: 30px;
+            }
+            .card {
+                background: white;
+                border-radius: 8px;
+                padding: 25px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                transition: transform 0.2s;
+                border: 1px solid #e0e0e0;
+            }
+            .card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            }
+            .card h3 {
+                color: #2c3e50;
+                margin-top: 0;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .card p {
+                color: #7f8c8d;
+                line-height: 1.6;
+            }
+            .btn {
+                display: inline-block;
+                padding: 10px 20px;
+                background: #3498db;
+                color: white;
+                text-decoration: none;
+                border-radius: 4px;
+                margin-top: 15px;
+                transition: background 0.3s;
+            }
+            .btn:hover {
+                background: #2980b9;
+            }
+            .api-info {
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 5px;
+                margin-top: 30px;
+            }
+            .icon {
+                font-size: 24px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🤖 Agent4 BOS - Dashboard</h1>
+            <p>System wsparcia administracyjnego z bazą wiedzy i agentem AI</p>
+        </div>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h3><span class="icon">📝</span> Formularz przypadków</h3>
+                <p>Dodawanie nowych przypadków do bazy wiedzy poprzez formularz HTML</p>
+                <a href="/form" class="btn">Otwórz formularz</a>
+            </div>
+            
+            <div class="card">
+                <h3><span class="icon">🤖</span> Interfejs AI</h3>
+                <p>Interfejs webowy do generowania odpowiedzi przez AI</p>
+                <a href="/run_page" class="btn">Uruchom AI</a>
+            </div>
+            
+            <div class="card">
+                <h3><span class="icon">🔍</span> Wyszukiwanie w bazie</h3>
+                <p>Przeszukaj istniejące przypadki w bazie wiedzy</p>
+                <a href="/docs#/default/support_support_post" class="btn">Użyj API</a>
+            </div>
+            
+            <div class="card">
+                <h3><span class="icon">📚</span> Dokumentacja API</h3>
+                <p>Pełna dokumentacja wszystkich endpointów API</p>
+                <a href="/docs" class="btn">Otwórz dokumentację</a>
+            </div>
+            
+            <div class="card">
+                <h3><span class="icon">📋</span> Lista przypadków</h3>
+                <p>Przeglądaj wszystkie przypadki w bazie danych</p>
+                <a href="/form/cases" class="btn">Zobacz przypadki</a>
+            </div>
+            
+            <div class="card">
+                <h3><span class="icon">🩺</span> Health Check</h3>
+                <p>Sprawdź stan serwisu i połączenia z AI</p>
+                <a href="/health" class="btn">Sprawdź zdrowie</a>
+            </div>
+        </div>
+        
+        <div class="api-info">
+            <h3>📡 Endpointy API:</h3>
+            <ul>
+                <li><strong>POST /run</strong> - Generowanie odpowiedzi AI</li>
+                <li><strong>POST /support</strong> - Wyszukiwanie w bazie wiedzy</li>
+                <li><strong>GET /health</strong> - Status serwisu</li>
+                <li><strong>GET /form</strong> - Formularz HTML</li>
+                <li><strong>POST /form/submit</strong> - Zapis formularza</li>
+                <li><strong>GET /form/cases</strong> - Lista przypadków</li>
+                <li><strong>GET /run_page</strong> - Interfejs webowy AI</li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    """
 
 @app.get("/health")
 async def health_check():
-    """Detailed health check"""
-    if llm is None:
-        raise HTTPException(status_code=503, detail="LLM not initialized")
-    
-    try:
-        # Simple test to verify Ollama is responsive
-        test_response = llm.invoke("Say 'OK'")
-        llm_status = "connected"
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        llm_status = f"disconnected: {str(e)}"
-    
+    """Health check endpoint"""
     return {
-        "status": "healthy" if llm_status == "connected" else "degraded",
-        "llm": llm_status,
-        "collection": COLLECTION,
-        "model": os.getenv("OLLAMA_MODEL", "llama3")
+        "status": "healthy",
+        "service": "agent4_bos_main",
+        "timestamp": datetime.datetime.now().isoformat(),
+        "form_app_mounted": True,
+        "run_app_mounted": True,
+        "endpoints": [
+            {"path": "/", "method": "GET", "description": "Main dashboard"},
+            {"path": "/form", "method": "GET", "description": "Form sub-application"},
+            {"path": "/run_page", "method": "GET", "description": "AI interface"},
+            {"path": "/run", "method": "POST", "description": "AI response generation"},
+            {"path": "/support", "method": "POST", "description": "Knowledge base search"},
+            {"path": "/health", "method": "GET", "description": "Health check"}
+        ]
     }
 
-@app.post("/run", response_model=RunResponse)
-async def run(request: RunRequest):
-    """
-    Generate a draft response or summary for the given input.
-    
-    Args:
-        request: Contains the input text and optional parameters
-        
-    Returns:
-        Draft response generated by the LLM
-    """
-    if llm is None:
-        raise HTTPException(status_code=503, detail="LLM service not available")
-    
-    if not request.input or request.input.strip() == "":
-        raise HTTPException(status_code=400, detail="Input cannot be empty")
+@app.post("/run")
+async def run(payload: dict):
+    """Legacy endpoint for generating draft responses"""
+    task = payload.get("input", "")
+    if not task:
+        raise HTTPException(400, "No input provided")
     
     try:
-        logger.info(f"Generating draft for input (length: {len(request.input)})")
-        
-        # Create a more robust prompt
-        prompt = f"""
-        Please generate a concise draft response or summary for the following:
-        
-        {request.input}
-        
-        Requirements:
-        - Be clear and professional
-        - Keep it under {request.max_length} words
-        - Focus on key points
-        - Use neutral tone
-        
-        Draft:
-        """
-        
-        response = llm.invoke(prompt)
-        
-        logger.info(f"Draft generated successfully (length: {len(response.content)})")
-        
-        return RunResponse(
-            draft=response.content.strip(),
-            collection=COLLECTION
-        )
-        
-    except Exception as e:
-        logger.error(f"Error generating draft: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to generate draft: {str(e)}"
-        )
-
-# Error handlers
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "detail": exc.detail,
-            "status": "error",
-            "collection": COLLECTION
+        response = llm.invoke(f"Generate draft response or summary for this: {task}")
+        return {
+            "draft": response.content,
+            "collection": "agent4_bos",
+            "model": "llama3",
+            "timestamp": datetime.datetime.now().isoformat(),
+            "source": "main_app"
         }
-    )
+    except Exception as e:
+        raise HTTPException(500, f"Error generating response: {str(e)}")
 
-if __name__ == "__main__":
-    import uvicorn
-    
-    # Get port from environment variable, default to 8000
-    port = int(os.getenv("PORT", 8000))
-    
-    uvicorn.run(
-        "app:app",
-        host="0.0.0.0",
-        port=port,
-        reload=os.getenv("ENVIRONMENT", "development") == "development",
-        log_level="info"
-    )
+@app.post("/support")
+async def support(query: str = Body(..., embed=True)):
+    """Search for similar cases in knowledge base"""
+    query = query.strip()
+    if not query:
+        raise HTTPException(400, "Empty query")
+
+    # Load cases from JSON folder
+    cases = []
+    try:
+        for file in JSON_FOLDER.glob("*.json"):
+            with open(file, "r", encoding="utf-8") as f:
+                cases.append(json.load(f))
+    except Exception as e:
+        raise HTTPException(500, f"Error loading cases: {str(e)}")
+
+    if not cases:
+        return {
+            "message": "Baza przypadków jest pusta. Dodaj przypadki przez formularz.",
+            "cases_count": 0,
+            "form_url": "/form"
+        }
+
+    prompt = f"""
+Jesteś agentem wsparcia administracyjnego.
+
+BAZA PRZYPADKÓW (JSON):
+{json.dumps(cases, ensure_ascii=False, indent=2)}
+
+ZGŁOSZENIE PRACOWNIKA:
+"{query}"
+
+ZADANIE:
+1. Oceń, czy w bazie istnieje podobny przypadek.
+2. Jeśli TAK - zwróć JSON z case_id, title, description, solution, confidence (0-100)
+3. Jeśli NIE - zwróć JSON: {{ "message": "W bazie nie ma takiego przypadku" }}
+
+Zwróć WYŁĄCZNIE poprawny JSON.
+"""
+
+    try:
+        response = llm.invoke(prompt)
+        content = response.content.strip()
+        
+        try:
+            result = json.loads(content)
+            return {
+                **result,
+                "search_query": query,
+                "cases_searched": len(cases),
+                "source": "main_app_support"
+            }
+        except json.JSONDecodeError:
+            return {
+                "message": "LLM returned invalid JSON",
+                "raw_response": content[:500],
+                "cases_count": len(cases),
+                "search_query": query
+            }
+    except Exception as e:
+        return {
+            "message": "Error processing request",
+            "error": str(e),
+            "cases_count": len(cases)
+        }
+
+# =========================
+# STARTUP DEBUG INFO
+# =========================
+
+print("=" * 60)
+print("Agent4 BOS Main Application Initialized...")
+print(f"Form app mounted at: /form")
+print(f"Run page app mounted at: /run_page")
+print(f"JSON folder: {JSON_FOLDER}")
+print("=" * 60)

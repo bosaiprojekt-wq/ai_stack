@@ -1,15 +1,19 @@
+version: '3.8'
+
 services:
   agent4_bos:
     build: .
     container_name: agent4_bos
     ports:
       - "8004:8000"
+    volumes:
+      - ./json_database_handling:/app/json_database_handling
     networks:
       - ai_network
     environment:
       - COLLECTION=agent4_bos
 
+
 networks:
   ai_network:
     external: true
-
