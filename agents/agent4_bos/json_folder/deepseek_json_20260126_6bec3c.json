@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-017",
+  "Tytuł": "Konflikt terminów egzaminów",
+  "Autor": "Robert Wójcik",
+  "Opis": "Dwóch przedmiotów wyznaczyło egzamin na tę samą godzinę dla tej samej grupy.",
+  "Rozwiązanie": "Przesunięto egzamin z Matematyki na późniejszy termin.",
+  "Dodatkowe uwagi": "Wprowadzić system automatycznego wykrywania kolizji.",
+  "created_at": "2026-01-24T11:55:00"
+}

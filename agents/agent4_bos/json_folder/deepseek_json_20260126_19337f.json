@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-019",
+  "Tytuł": "Problem z przypisaniem promotorów prac dyplomowych",
+  "Autor": "Marcin Dąbrowski",
+  "Opis": "System przypisał studentom promotorów, którzy mają już pełne limity.",
+  "Rozwiązanie": "Przeprowadzono ręczną redistrybucję i poprawiono algorytm przydziału.",
+  "Dodatkowe uwagi": "Dodać walidację limitów w czasie rzeczywistym.",
+  "created_at": "2026-01-25T08:30:00"
+}

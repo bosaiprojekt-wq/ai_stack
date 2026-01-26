@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-011",
+  "Tytuł": "Problem z rejestracją na zajęcia fakultatywne",
+  "Autor": "Michał Nowak",
+  "Opis": "System nie pozwala studentom drugiego roku zarejestrować się na wybrane fakultety.",
+  "Rozwiązanie": "Zmieniono ustawienia uprawnień dla kierunku Informatyka.",
+  "Dodatkowe uwagi": "Tylko kierunek Informatyka był dotknięty.",
+  "created_at": "2026-01-22T11:30:00"
+}

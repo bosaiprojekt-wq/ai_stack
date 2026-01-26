@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-009",
+  "Tytuł": "Problemy z przydziałem sal",
+  "Autor": "Łukasz Wiśniewski",
+  "Opis": "Niektóre grupy mają konflikt sal podczas zajęć praktycznych.",
+  "Rozwiązanie": "Zmieniono harmonogram sal i powiadomiono studentów.",
+  "Dodatkowe uwagi": "Sprawdzić kolizje w kolejnych tygodniach.",
+  "created_at": "2026-01-21T20:00:00"
+}

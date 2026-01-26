@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-015",
+  "Tytuł": "Błąd w obliczaniu średniej ocen",
+  "Autor": "Tomasz Kamiński",
+  "Opis": "System błędnie oblicza średnią dla studentów z przedmiotów zdawanych w języku angielskim.",
+  "Rozwiązanie": "Poprawiono formułę obliczeniową - uwzględniono współczynniki ECTS.",
+  "Dodatkowe uwagi": "Przeprowadzić walidację dla wszystkich kierunków.",
+  "created_at": "2026-01-23T13:25:00"
+}

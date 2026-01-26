@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-014",
+  "Tytuł": "Awaria systemu płatności za akademik",
+  "Autor": "Joanna Lewandowska",
+  "Opis": "Studenci nie mogą opłacić zakwaterowania przez system.",
+  "Rozwiązanie": "Wykryto problem z integracją z systemem bankowym. Przywrócono backup.",
+  "Dodatkowe uwagi": "Monitorować transakcje przez 24h.",
+  "created_at": "2026-01-23T10:10:00"
+}

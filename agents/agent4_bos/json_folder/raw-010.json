@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-010",
+  "Tytuł": "Nieprawidłowa godzina egzaminu",
+  "Autor": "Magdalena Pawlak",
+  "Opis": "Egzamin z fizyki był zaplanowany na 10:00 zamiast 9:00.",
+  "Rozwiązanie": "Skorygowano godzinę w systemie i wysłano powiadomienia do studentów.",
+  "Dodatkowe uwagi": "",
+  "created_at": "2026-01-21T20:15:00"
+}

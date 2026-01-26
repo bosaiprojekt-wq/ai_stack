@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-007",
+  "Tytuł": "Zmiana prowadzącego",
+  "Autor": "Tomasz Bąk",
+  "Opis": "Wykładowca zrezygnował, zajęcia przejmuje nowy prowadzący.",
+  "Rozwiązanie": "Zaktualizowano dane w systemie, powiadomiono studentów.",
+  "Dodatkowe uwagi": "Nowy prowadzący ma dostęp do wszystkich materiałów.",
+  "created_at": "2026-01-21T19:30:00"
+}

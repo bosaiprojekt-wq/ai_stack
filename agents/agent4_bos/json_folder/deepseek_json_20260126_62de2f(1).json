@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-018",
+  "Tytuł": "Brak możliwości wydruku zaświadczeń",
+  "Autor": "Agnieszka Kowalczyk",
+  "Opis": "Moduł druku zaświadczeń o studiach nie działa od wczoraj.",
+  "Rozwiązanie": "Wykryto brakujące zależności w serwerze druku. Zainstalowano brakujące pakiety.",
+  "Dodatkowe uwagi": "Zaplanować aktualizację wszystkich serwerów druku.",
+  "created_at": "2026-01-24T15:20:00"
+}

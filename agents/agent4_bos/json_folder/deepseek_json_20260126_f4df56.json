@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-016",
+  "Tytuł": "Problem z modułem bibliotecznym",
+  "Autor": "Magdalena Szymańska",
+  "Opis": "System nie pokazuje dostępności książek w bibliotece głównej.",
+  "Rozwiązanie": "Zaktualizowano API integracji z systemem bibliotecznym.",
+  "Dodatkowe uwagi": "Problem występował tylko dla nowych nabytków.",
+  "created_at": "2026-01-24T09:40:00"
+}

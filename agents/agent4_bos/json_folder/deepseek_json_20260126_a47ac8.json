@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-013",
+  "Tytuł": "Problem z generowaniem legitymacji studenckich",
+  "Autor": "Piotr Wojciechowski",
+  "Opis": "System nie generuje poprawnie legitymacji dla studentów pierwszego roku.",
+  "Rozwiązanie": "Naprawiono błąd w module druku - problem z formatowaniem zdjęć.",
+  "Dodatkowe uwagi": "Przetestować z różnymi rozdzielczościami zdjęć.",
+  "created_at": "2026-01-23T08:20:00"
+}

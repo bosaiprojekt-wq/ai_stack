@@ -1,0 +1,9 @@
+{
+  "case_id": "SP-008",
+  "Tytuł": "Błąd przy generowaniu dyplomów",
+  "Autor": "Karolina Szymańska",
+  "Opis": "System generuje dyplomy z błędną datą ukończenia.",
+  "Rozwiązanie": "Poprawiono format daty w systemie i wygenerowano nowe dyplomy.",
+  "Dodatkowe uwagi": "",
+  "created_at": "2026-01-21T19:45:00"
+}
