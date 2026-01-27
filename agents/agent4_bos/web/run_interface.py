@@ -1,4 +1,4 @@
-# form_app/run_app.py - AI Interface sub-app with fixed response display
+# web/run_interface.py - Run page sub-app
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +14,7 @@ run_app.add_middleware(
     allow_headers=["*"],
 )
 
+# Keep the existing RUN_HTML content exactly as is (no changes)
 RUN_HTML = """
 <!DOCTYPE html>
 <html>
@@ -775,6 +776,7 @@ async def get_run_page(request: Request):
 @run_app.get("/test")
 async def test_endpoint():
     """Test endpoint to verify the sub-app is working"""
+    import datetime
     return JSONResponse({
         "status": "ok",
         "message": "Run page app is working",

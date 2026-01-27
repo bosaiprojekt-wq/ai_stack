@@ -1,15 +1,14 @@
-# app.py - Main FastAPI application
-import json
-import datetime
-from pathlib import Path
+# app.py - Main FastAPI application (updated)
 from fastapi import FastAPI, Body, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_community.chat_models import ChatOllama
 
-# Import form_app components
-from form_app.form_app import form_app
-from form_app.run_app import run_app
+# Import components
+from web.forms import form_app
+from web.run_interface import run_app
+from api.run_api import handle_run_request
+from api.support_api import handle_support_request
+from core.database import db
 
 # =========================
 # MAIN APP CONFIGURATION
@@ -30,18 +29,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# LLM Configuration
-llm = ChatOllama(
-    model="llama3",
-    base_url="http://ollama:11434"
-)
-
 # Mount sub-applications
 app.mount("/form", form_app)
-app.mount("/run_page", run_app)  # Note: This is separate from the /run API endpoint
-
-# JSON folder for main app
-JSON_FOLDER = Path("./json_database_handling/json_folder")
+app.mount("/run_page", run_app)
 
 # =========================
 # MAIN APP ROUTES
@@ -186,12 +176,14 @@ async def read_root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    import datetime
     return {
         "status": "healthy",
         "service": "agent4_bos_main",
         "timestamp": datetime.datetime.now().isoformat(),
         "form_app_mounted": True,
         "run_app_mounted": True,
+        "database_cases": db.get_case_count(),
         "endpoints": [
             {"path": "/", "method": "GET", "description": "Main dashboard"},
             {"path": "/form", "method": "GET", "description": "Form sub-application"},
@@ -204,88 +196,13 @@ async def health_check():
 
 @app.post("/run")
 async def run(payload: dict):
-    """Legacy endpoint for generating draft responses"""
-    task = payload.get("input", "")
-    if not task:
-        raise HTTPException(400, "No input provided")
-    
-    try:
-        response = llm.invoke(f"Generate draft response or summary for this: {task}")
-        return {
-            "draft": response.content,
-            "collection": "agent4_bos",
-            "model": "llama3",
-            "timestamp": datetime.datetime.now().isoformat(),
-            "source": "main_app"
-        }
-    except Exception as e:
-        raise HTTPException(500, f"Error generating response: {str(e)}")
+    """Legacy endpoint for generating draft responses - uses API service"""
+    return await handle_run_request(payload)
 
 @app.post("/support")
 async def support(query: str = Body(..., embed=True)):
-    """Search for similar cases in knowledge base"""
-    query = query.strip()
-    if not query:
-        raise HTTPException(400, "Empty query")
-
-    # Load cases from JSON folder
-    cases = []
-    try:
-        for file in JSON_FOLDER.glob("*.json"):
-            with open(file, "r", encoding="utf-8") as f:
-                cases.append(json.load(f))
-    except Exception as e:
-        raise HTTPException(500, f"Error loading cases: {str(e)}")
-
-    if not cases:
-        return {
-            "message": "Baza przypadków jest pusta. Dodaj przypadki przez formularz.",
-            "cases_count": 0,
-            "form_url": "/form"
-        }
-
-    prompt = f"""
-Jesteś agentem wsparcia administracyjnego.
-
-BAZA PRZYPADKÓW (JSON):
-{json.dumps(cases, ensure_ascii=False, indent=2)}
-
-ZGŁOSZENIE PRACOWNIKA:
-"{query}"
-
-ZADANIE:
-1. Oceń, czy w bazie istnieje podobny przypadek.
-2. Jeśli TAK - zwróć JSON z case_id, title, description, solution, confidence (0-100)
-3. Jeśli NIE - zwróć JSON: {{ "message": "W bazie nie ma takiego przypadku" }}
-
-Zwróć WYŁĄCZNIE poprawny JSON.
-"""
-
-    try:
-        response = llm.invoke(prompt)
-        content = response.content.strip()
-        
-        try:
-            result = json.loads(content)
-            return {
-                **result,
-                "search_query": query,
-                "cases_searched": len(cases),
-                "source": "main_app_support"
-            }
-        except json.JSONDecodeError:
-            return {
-                "message": "LLM returned invalid JSON",
-                "raw_response": content[:500],
-                "cases_count": len(cases),
-                "search_query": query
-            }
-    except Exception as e:
-        return {
-            "message": "Error processing request",
-            "error": str(e),
-            "cases_count": len(cases)
-        }
+    """Search for similar cases in knowledge base - uses API service"""
+    return await handle_support_request(query)
 
 # =========================
 # STARTUP DEBUG INFO
@@ -295,5 +212,5 @@ print("=" * 60)
 print("Agent4 BOS Main Application Initialized...")
 print(f"Form app mounted at: /form")
 print(f"Run page app mounted at: /run_page")
-print(f"JSON folder: {JSON_FOLDER}")
+print(f"Database cases: {db.get_case_count()}")
 print("=" * 60)
