@@ -7,12 +7,12 @@ services:
     ports:
       - "8004:8000"
     volumes:
-      - ./json_database_handling:/app/json_database_handling
+      - ./json_folder:/app/json_folder  # Direct mapping to json_folder
     networks:
       - ai_network
     environment:
       - COLLECTION=agent4_bos
-
+      - JSON_FOLDER_PATH=/app/json_folder  # Set environment variable
 
 networks:
   ai_network:

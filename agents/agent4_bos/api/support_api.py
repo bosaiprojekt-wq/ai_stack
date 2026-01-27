@@ -1,8 +1,7 @@
-# api/support_api.py - /support endpoint logic
 from fastapi import HTTPException
-from core.llm_service import llm_service
-from core.database import db
-import json
+from core.support_agent import search_similar_case
+from core.file_utils import load_all_cases, get_case_count
+from core.config import JSON_FOLDER_PATH
 
 async def handle_support_request(query: str) -> dict:
     """Handle /support endpoint request"""
@@ -11,55 +10,45 @@ async def handle_support_request(query: str) -> dict:
         raise HTTPException(400, "Empty query")
     
     # Get cases from database
-    cases = db.get_all_cases()
+    cases = load_all_cases()
     
     if not cases:
         return {
             "message": "Baza przypadków jest pusta. Dodaj przypadki przez formularz.",
             "cases_count": 0,
-            "form_url": "/form"
+            "form_url": "/form",
+            "database_path": JSON_FOLDER_PATH
         }
     
-    # Create prompt for LLM
-    prompt = f"""
-Jesteś agentem wsparcia administracyjnego.
-
-BAZA PRZYPADKÓW (JSON):
-{json.dumps(cases, ensure_ascii=False, indent=2)}
-
-ZGŁOSZENIE PRACOWNIKA:
-"{query}"
-
-ZADANIE:
-1. Oceń, czy w bazie istnieje podobny przypadek.
-2. Jeśli TAK - zwróć JSON z case_id, title, description, solution, confidence (0-100)
-3. Jeśli NIE - zwróć JSON: {{ "message": "W bazie nie ma takiego przypadku" }}
-
-Zwróć WYŁĄCZNIE poprawny JSON.
-"""
-    
+    # Use the new support agent logic
     try:
-        response = llm_service.generate_response(prompt)
-        content = response.strip()
+        result = search_similar_case(query)
         
-        try:
-            result = json.loads(content)
+        # Format response to match existing API structure
+        if result.get("found"):
             return {
-                **result,
+                "message": result.get("response", ""),
+                "found": True,
+                "confidence": 95,
                 "search_query": query,
                 "cases_searched": len(cases),
-                "source": "main_app_support"
+                "database_path": JSON_FOLDER_PATH,
+                "source": "core_support_agent"
             }
-        except json.JSONDecodeError:
+        else:
             return {
-                "message": "LLM returned invalid JSON",
-                "raw_response": content[:500],
-                "cases_count": len(cases),
-                "search_query": query
+                "message": result.get("response", "Nie znaleziono podobnego przypadku"),
+                "found": False,
+                "search_query": query,
+                "cases_searched": len(cases),
+                "database_path": JSON_FOLDER_PATH,
+                "source": "core_support_agent"
             }
+            
     except Exception as e:
         return {
-            "message": "Error processing request",
+            "message": "Wystąpił błąd podczas generowania odpowiedzi.",
             "error": str(e),
-            "cases_count": len(cases)
+            "cases_count": len(cases),
+            "database_path": JSON_FOLDER_PATH
         }

@@ -1,15 +1,14 @@
-# web/forms.py - Form sub-app
-import json
-import datetime
-from pathlib import Path
+
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+# Import from core modules
+from core.file_utils import save_case, list_cases_summary
+from core.config import JSON_FOLDER_PATH
+
 # Create sub-app
 form_app = FastAPI(title="Form Application", description="HTML form for adding cases")
-
 # Import database service
-from core.database import db
 
 # Keep the existing FORM_HTML content exactly as is (no changes)
 FORM_HTML = """
@@ -172,7 +171,6 @@ FORM_HTML = """
 </body>
 </html>
 """
-
 @form_app.get("/")
 async def get_form(request: Request):
     """Serve the HTML form"""
@@ -186,9 +184,9 @@ async def submit_case(
     Rozwiazanie: str = Form(...),
     Uwagi: str = Form("")
 ):
-    """Handle form submission - uses database service"""
+    """Handle form submission - uses file_utils service"""
     try:
-        result = db.save_case(Tytul, Autor, Opis, Rozwiazanie, Uwagi)
+        result = save_case(Tytul, Autor, Opis, Rozwiazanie, Uwagi)
         return JSONResponse({
             "status": "success",
             "message": "Przypadek zapisany pomyślnie",
@@ -204,10 +202,16 @@ async def submit_case(
 
 @form_app.get("/cases")
 async def list_cases():
-    """List all cases in database - uses database service"""
-    cases = db.list_cases()
+    """List all cases in database - uses file_utils service"""
+    cases = list_cases_summary()
     return {
         "cases": cases,
         "count": len(cases),
-        "database_path": str(db.folder)
+        "database_path": JSON_FOLDER_PATH
     }
+
+@form_app.get("/info")
+async def get_database_info():
+    """Get database information"""
+    from core.file_utils import get_database_info
+    return get_database_info()

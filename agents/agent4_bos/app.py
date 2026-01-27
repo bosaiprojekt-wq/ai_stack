@@ -1,14 +1,15 @@
-# app.py - Main FastAPI application (updated)
-from fastapi import FastAPI, Body, HTTPException
+from fastapi import FastAPI, Body, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+import os
 
 # Import components
 from web.forms import form_app
 from web.run_interface import run_app
-from api.run_api import handle_run_request
 from api.support_api import handle_support_request
-from core.database import db
+from core.file_utils import get_case_count
+from core.config import JSON_FOLDER_PATH
 
 # =========================
 # MAIN APP CONFIGURATION
@@ -20,6 +21,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Initialize templates
+current_dir = os.path.dirname(os.path.abspath(__file__))  # /app
+templates_dir = os.path.join(current_dir, "web", "templates")  # /app/web/templates
+
+print(f"Main app templates directory: {templates_dir}")  # Debug
+
+templates = Jinja2Templates(directory=templates_dir)
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -38,172 +46,100 @@ app.mount("/run_page", run_app)
 # =========================
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root():
+async def read_root(request: Request):  # <-- Add request parameter
     """Main landing page with links to all services"""
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Agent4 BOS - Main Dashboard</title>
-        <style>
-            body { 
-                font-family: Arial, sans-serif; 
-                max-width: 1000px; 
-                margin: 40px auto; 
-                padding: 20px; 
-            }
-            .header { 
-                text-align: center; 
-                margin-bottom: 40px; 
-                padding: 20px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                border-radius: 10px;
-            }
-            .dashboard {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 20px;
-                margin-top: 30px;
-            }
-            .card {
-                background: white;
-                border-radius: 8px;
-                padding: 25px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                transition: transform 0.2s;
-                border: 1px solid #e0e0e0;
-            }
-            .card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            }
-            .card h3 {
-                color: #2c3e50;
-                margin-top: 0;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            .card p {
-                color: #7f8c8d;
-                line-height: 1.6;
-            }
-            .btn {
-                display: inline-block;
-                padding: 10px 20px;
-                background: #3498db;
-                color: white;
-                text-decoration: none;
-                border-radius: 4px;
-                margin-top: 15px;
-                transition: background 0.3s;
-            }
-            .btn:hover {
-                background: #2980b9;
-            }
-            .api-info {
-                background: #f8f9fa;
-                padding: 15px;
-                border-radius: 5px;
-                margin-top: 30px;
-            }
-            .icon {
-                font-size: 24px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>🤖 Agent4 BOS - Dashboard</h1>
-            <p>System wsparcia administracyjnego z bazą wiedzy i agentem AI</p>
-        </div>
-        
-        <div class="dashboard">
-            <div class="card">
-                <h3><span class="icon">📝</span> Formularz przypadków</h3>
-                <p>Dodawanie nowych przypadków do bazy wiedzy poprzez formularz HTML</p>
-                <a href="/form" class="btn">Otwórz formularz</a>
-            </div>
-            
-            <div class="card">
-                <h3><span class="icon">🤖</span> Interfejs AI</h3>
-                <p>Interfejs webowy do generowania odpowiedzi przez AI</p>
-                <a href="/run_page" class="btn">Uruchom AI</a>
-            </div>
-            
-            <div class="card">
-                <h3><span class="icon">🔍</span> Wyszukiwanie w bazie</h3>
-                <p>Przeszukaj istniejące przypadki w bazie wiedzy</p>
-                <a href="/docs#/default/support_support_post" class="btn">Użyj API</a>
-            </div>
-            
-            <div class="card">
-                <h3><span class="icon">📚</span> Dokumentacja API</h3>
-                <p>Pełna dokumentacja wszystkich endpointów API</p>
-                <a href="/docs" class="btn">Otwórz dokumentację</a>
-            </div>
-            
-            <div class="card">
-                <h3><span class="icon">📋</span> Lista przypadków</h3>
-                <p>Przeglądaj wszystkie przypadki w bazie danych</p>
-                <a href="/form/cases" class="btn">Zobacz przypadki</a>
-            </div>
-            
-            <div class="card">
-                <h3><span class="icon">🩺</span> Health Check</h3>
-                <p>Sprawdź stan serwisu i połączenia z AI</p>
-                <a href="/health" class="btn">Sprawdź zdrowie</a>
-            </div>
-        </div>
-        
-        <div class="api-info">
-            <h3>📡 Endpointy API:</h3>
-            <ul>
-                <li><strong>POST /run</strong> - Generowanie odpowiedzi AI</li>
-                <li><strong>POST /support</strong> - Wyszukiwanie w bazie wiedzy</li>
-                <li><strong>GET /health</strong> - Status serwisu</li>
-                <li><strong>GET /form</strong> - Formularz HTML</li>
-                <li><strong>POST /form/submit</strong> - Zapis formularza</li>
-                <li><strong>GET /form/cases</strong> - Lista przypadków</li>
-                <li><strong>GET /run_page</strong> - Interfejs webowy AI</li>
-            </ul>
-        </div>
-    </body>
-    </html>
-    """
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "json_folder_path": JSON_FOLDER_PATH,
+            "case_count": get_case_count()
+        }
+    )
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Minimal but informative health check"""
     import datetime
+    from core.file_utils import get_database_info, get_case_count
+    from core.llm_service import llm_service
+    
+    # Test database
+    db_ok = False
+    try:
+        db_info = get_database_info()
+        case_count = get_case_count()
+        db_ok = db_info["exists"] and db_info["is_dir"]
+    except:
+        db_ok = False
+    
+    # Test LLM
+    llm_ok = False
+    try:
+        import requests
+        response = requests.get(f"{llm_service.llm.base_url}/api/tags", timeout=3)
+        llm_ok = response.ok
+    except:
+        llm_ok = False
+    
+    # Overall status
+    if db_ok and llm_ok:
+        status = "healthy"
+    elif not db_ok and not llm_ok:
+        status = "unhealthy"
+    else:
+        status = "degraded"
+    
     return {
-        "status": "healthy",
-        "service": "agent4_bos_main",
+        "status": status,
         "timestamp": datetime.datetime.now().isoformat(),
-        "form_app_mounted": True,
-        "run_app_mounted": True,
-        "database_cases": db.get_case_count(),
-        "endpoints": [
-            {"path": "/", "method": "GET", "description": "Main dashboard"},
-            {"path": "/form", "method": "GET", "description": "Form sub-application"},
-            {"path": "/run_page", "method": "GET", "description": "AI interface"},
-            {"path": "/run", "method": "POST", "description": "AI response generation"},
-            {"path": "/support", "method": "POST", "description": "Knowledge base search"},
-            {"path": "/health", "method": "GET", "description": "Health check"}
+        "checks": {
+            "database": {
+                "healthy": db_ok,
+                "cases": get_case_count() if db_ok else 0,
+                "path": db_info.get("folder_path", "unknown") if db_ok else "unknown"
+            },
+            "llm_service": {
+                "healthy": llm_ok,
+                "model": llm_service.model_name if llm_ok else "unknown",
+                "base_url": llm_service.llm.base_url if llm_ok else "unknown"
+            }
+        },
+        "applications": [
+            {"name": "form", "mounted": True, "path": "/form"},
+            {"name": "run_page", "mounted": True, "path": "/run_page"}
         ]
     }
-
-@app.post("/run")
-async def run(payload: dict):
-    """Legacy endpoint for generating draft responses - uses API service"""
-    return await handle_run_request(payload)
-
+#main agent endpoint
 @app.post("/support")
 async def support(query: str = Body(..., embed=True)):
     """Search for similar cases in knowledge base - uses API service"""
     return await handle_support_request(query)
 
+
+#files testing endpoints
+@app.get("/test/files")
+async def test_files():
+    """Test endpoint to list JSON files"""
+    from core.file_utils import list_json_files, get_database_info
+    files = list_json_files()
+    db_info = get_database_info()
+    
+    return {
+        "folder": db_info.get("folder_path", JSON_FOLDER_PATH),
+        "file_count": len(files),
+        "database_info": db_info,
+        "files": files
+    }
+@app.get("/test/first-file")
+async def test_first_file():
+    """Test endpoint to read first JSON file"""
+    from core.file_utils import get_first_file
+    try:
+        return get_first_file()
+    except FileNotFoundError:
+        return {"error": "No JSON files found"}
+    
 # =========================
 # STARTUP DEBUG INFO
 # =========================
@@ -212,5 +148,5 @@ print("=" * 60)
 print("Agent4 BOS Main Application Initialized...")
 print(f"Form app mounted at: /form")
 print(f"Run page app mounted at: /run_page")
-print(f"Database cases: {db.get_case_count()}")
+print(f"Database cases: {get_case_count()}")
 print("=" * 60)

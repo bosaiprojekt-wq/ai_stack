@@ -1,13 +1,15 @@
-# core/llm_service.py - LLM service wrapper
-from langchain_community.chat_models import ChatOllama
 import time
+from typing import Dict, Any
+from langchain_community.chat_models import ChatOllama
+
 
 class LLMService:
     def __init__(self, model="llama3", base_url="http://ollama:11434"):
-        self.llm = ChatOllama(model=model, base_url=base_url)
+        self.llm = ChatOllama(model=model, base_url=base_url,temperature=0.1,top_p=0.1)
+        self.model_name = model
     
     def generate_response(self, prompt: str, max_retries: int = 3) -> str:
-        """Generate response with retry logic"""
+        """Generate LLM response with retry logic"""
         for attempt in range(max_retries):
             try:
                 response = self.llm.invoke(prompt)
@@ -19,10 +21,14 @@ class LLMService:
                 else:
                     raise Exception(f"Failed after {max_retries} attempts: {str(e)}")
     
-    def generate_draft(self, task: str) -> str:
-        """Generate draft response for a task"""
-        prompt = f"Generate draft response or summary for this: {task}"
-        return self.generate_response(prompt)
+    def get_info(self) -> Dict[str, Any]:
+        """Get LLM service information"""
+        return {
+            "model": self.model_name,
+            "base_url": self.llm.base_url,
+            "service": "ChatOllama"
+        }
+
 
 # Singleton instance
 llm_service = LLMService()
