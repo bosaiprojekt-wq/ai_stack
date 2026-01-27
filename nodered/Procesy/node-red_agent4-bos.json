@@ -1,0 +1,1672 @@
+[
+    {
+        "id": "2460a303d4944d7c",
+        "type": "tab",
+        "label": "Agent_BOS - Frontdesk (flows)",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "9b153dac8ea8e41f",
+        "type": "tab",
+        "label": "Agent_BOS - Frontdesk",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "3172235a74acd0aa",
+        "type": "tab",
+        "label": "Agent AI Logic - BOS Support",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "957342e538411072",
+        "type": "tab",
+        "label": "Test Agent5 RODO",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "36fe8c50d5ed6980",
+        "type": "tab",
+        "label": "TEST – Agenci AI",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "f332562e163893c3",
+        "type": "tab",
+        "label": "ORCHESTRATOR – z AGENT 3 (async)",
+        "disabled": false
+    },
+    {
+        "id": "90d9ac0626e16e04",
+        "type": "inject",
+        "z": "2460a303d4944d7c",
+        "name": "Flow 1: Pracownik odpowiada samodzielnie",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"student_question\": \"Jak zresetować hasło do USOS?\", \"ticket_id\": 101, \"ticket_category\": \"IT Support\"}",
+        "payloadType": "str",
+        "x": 330,
+        "y": 180,
+        "wires": [
+            [
+                "70498ef8bbcca8d6"
+            ]
+        ]
+    },
+    {
+        "id": "8abd3e8c56777271",
+        "type": "function",
+        "z": "2460a303d4944d7c",
+        "name": "Qdrant: Przesłanie formularza do bazy",
+        "func": "// Przygotowanie punktu do zapisu w bazie wektorowej\nmsg.qdrant_upsert = {\n    \"points\": [\n        {\n            \"id\": msg.payload.ticket_id,\n            \"vector\": [0.1, 0.2, 0.3], // Nowy embedding pary Pytanie+Odpowiedź\n            \"payload\": {\n                \"student_question\": msg.payload.student_question,\n                \"ticket_category\": msg.payload.ticket_category,\n                \"bos_answer\": msg.bos_answer\n            }\n        }\n    ]\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1110,
+        "y": 180,
+        "wires": [
+            [
+                "628e816a0df88af5"
+            ]
+        ]
+    },
+    {
+        "id": "11e82e8098cc5675",
+        "type": "http request",
+        "z": "2460a303d4944d7c",
+        "name": "PUT /run",
+        "method": "PUT",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent4_bos:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1360,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "628e816a0df88af5",
+        "type": "debug",
+        "z": "2460a303d4944d7c",
+        "name": "Zamknięcie ticketu",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1550,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "f82acb53e4f2d006",
+        "type": "inject",
+        "z": "2460a303d4944d7c",
+        "name": "Flow 2: Pracownik korzysta z pomocy Agenta",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"student_question\": \"Gdzie mogę znaleźć nagranie ze szkolenia bibliotecznego dla pierwszego roku? Nie mogłem być na spotkaniu online w zeszły wtorek, a muszę zaliczyć test.\", \"ticket_id\": 102, \"ticket_category\": \"Training\"}",
+        "payloadType": "json",
+        "x": 330,
+        "y": 280,
+        "wires": [
+            [
+                "f78a341776daae55"
+            ]
+        ]
+    },
+    {
+        "id": "f78a341776daae55",
+        "type": "function",
+        "z": "2460a303d4944d7c",
+        "name": "Qdrant: Przeszukanie bazy na podstawie kategorii",
+        "func": "// Tutaj tworzymy payload do Qdrant z filtrem kategorii\n\nmsg.qdrant_payload = {\n    \"vector\": [0.1, 0.2, 0.3], // Tu byłby prawdziwy wektor z OpenAI\n    \"filter\": {\n        \"must\": [\n            {\n                \"key\": \"ticket_category\",\n                \"match\": {\n                    \"value\": msg.payload.ticket_category // Np. \"IT Support\"\n                }\n            }\n        ]\n    },\n    \"limit\": 3\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 280,
+        "wires": [
+            [
+                "2539aba714b89d17"
+            ]
+        ]
+    },
+    {
+        "id": "2ab8523b2f3d4c40",
+        "type": "http request",
+        "z": "2460a303d4944d7c",
+        "name": "POST /run",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent4_bos:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1010,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c87705e082540a0b",
+        "type": "function",
+        "z": "2460a303d4944d7c",
+        "name": "Qdrant: Przesłanie formularza do bazy",
+        "func": "// Przygotowanie punktu do zapisu w bazie wektorowej\nmsg.qdrant_upsert = {\n    \"points\": [\n        {\n            \"id\": msg.payload.ticket_id,\n            \"vector\": [0.1, 0.2, 0.3], // Nowy embedding pary Pytanie+Odpowiedź\n            \"payload\": {\n                \"student_question\": msg.payload.student_question,\n                \"ticket_category\": msg.payload.ticket_category,\n                \"bos_answer\": msg.bos_answer\n            }\n        }\n    ]\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1690,
+        "y": 280,
+        "wires": [
+            [
+                "2928097f51a7062a"
+            ]
+        ]
+    },
+    {
+        "id": "348bd3f982bd06d1",
+        "type": "http request",
+        "z": "2460a303d4944d7c",
+        "name": "PUT /run",
+        "method": "PUT",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent4_bos:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1940,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2928097f51a7062a",
+        "type": "debug",
+        "z": "2460a303d4944d7c",
+        "name": "Zamknięcie ticketu",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 2130,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "af534c9e3410c232",
+        "type": "inject",
+        "z": "2460a303d4944d7c",
+        "name": "Flow 3: Agent nie znajduje poprawnej odpowiedzi",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"student_question\": \"Zgubiłem wczoraj moją legitymację studencką (ELS). Gdzie muszę się zgłosić, żeby wyrobić duplikat i na jakie konto mam wpłacić pieniądze za wydanie nowej?\", \"ticket_id\": 103, \"ticket_category\": \"FAQ\"}",
+        "payloadType": "json",
+        "x": 340,
+        "y": 380,
+        "wires": [
+            [
+                "f8701d93484d6dfb"
+            ]
+        ]
+    },
+    {
+        "id": "f8701d93484d6dfb",
+        "type": "function",
+        "z": "2460a303d4944d7c",
+        "name": "Qdrant: Przeszukanie bazy na podstawie kategorii",
+        "func": "// Tutaj tworzymy payload do Qdrant z filtrem kategorii\n\nmsg.qdrant_payload = {\n    \"vector\": [0.1, 0.2, 0.3], // Tu byłby prawdziwy wektor z OpenAI\n    \"filter\": {\n        \"must\": [\n            {\n                \"key\": \"ticket_category\",\n                \"match\": {\n                    \"value\": msg.payload.ticket_category // Np. \"IT Support\"\n                }\n            }\n        ]\n    },\n    \"limit\": 3\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 380,
+        "wires": [
+            [
+                "9dd14a6c2bf738d3"
+            ]
+        ]
+    },
+    {
+        "id": "230de589cc5c33bf",
+        "type": "http request",
+        "z": "2460a303d4944d7c",
+        "name": "POST /run",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent4_bos:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1030,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9dd14a6c2bf738d3",
+        "type": "function",
+        "z": "2460a303d4944d7c",
+        "name": "Qdrant: Przeszukanie całej bazy",
+        "func": "// Tutaj tworzymy payload do Qdrant z filtrem kategorii\n\nmsg.qdrant_payload = {\n    \"vector\": [0.1, 0.2, 0.3], // Tu byłby prawdziwy wektor z OpenAI\n    \"limit\": 5\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1250,
+        "y": 380,
+        "wires": [
+            [
+                "e03ba46c80735e9e"
+            ]
+        ]
+    },
+    {
+        "id": "256d96498c672c8c",
+        "type": "http request",
+        "z": "2460a303d4944d7c",
+        "name": "POST /run",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent4_bos:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1470,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8babb59f207b0b71",
+        "type": "function",
+        "z": "2460a303d4944d7c",
+        "name": "Qdrant: Przesłanie formularza do bazy",
+        "func": "// Przygotowanie punktu do zapisu w bazie wektorowej\nmsg.qdrant_upsert = {\n    \"points\": [\n        {\n            \"id\": msg.payload.ticket_id,\n            \"vector\": [0.1, 0.2, 0.3], // Nowy embedding pary Pytanie+Odpowiedź\n            \"payload\": {\n                \"student_question\": msg.payload.student_question,\n                \"ticket_category\": msg.payload.ticket_category,\n                \"bos_answer\": msg.bos_answer\n            }\n        }\n    ]\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2050,
+        "y": 380,
+        "wires": [
+            [
+                "bd04f1b1831873ea"
+            ]
+        ]
+    },
+    {
+        "id": "5ddd32dd0746c90e",
+        "type": "http request",
+        "z": "2460a303d4944d7c",
+        "name": "PUT /run",
+        "method": "PUT",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent4_bos:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 2280,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "bd04f1b1831873ea",
+        "type": "debug",
+        "z": "2460a303d4944d7c",
+        "name": "Zamknięcie ticketu",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 2450,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "70498ef8bbcca8d6",
+        "type": "function",
+        "z": "2460a303d4944d7c",
+        "name": "Pracownik przygotowuje odpowiedź samodzielnie",
+        "func": "msg.bos_answer = \"Musisz wejść na stronę reset.uni.edu.pl\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 180,
+        "wires": [
+            [
+                "8abd3e8c56777271"
+            ]
+        ]
+    },
+    {
+        "id": "2539aba714b89d17",
+        "type": "function",
+        "z": "2460a303d4944d7c",
+        "name": "Pracownik przygotowuje odpowiedź z pomocą agenta",
+        "func": "msg.bos_answer = \"Uprzejmie informujemy, że nagranie z zeszłotygodniowego spotkania oraz wszystkie materiały niezbędne do zaliczenia testu są dostępne na Platformie Zdalnej Edukacji(np.Moodle) w zakładce „Szkolenie Biblioteczne – Rok akad. 2025 / 26”.\"\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1300,
+        "y": 280,
+        "wires": [
+            [
+                "c87705e082540a0b"
+            ]
+        ]
+    },
+    {
+        "id": "e03ba46c80735e9e",
+        "type": "function",
+        "z": "2460a303d4944d7c",
+        "name": "Pracownik przygotowuje odpowiedź",
+        "func": "msg.bos_answer = \"W przypadku utraty legitymacji studenckiej, procedurę wyrobienia duplikatu należy rozpocząć od złożenia stosownego wniosku.\"\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1700,
+        "y": 380,
+        "wires": [
+            [
+                "8babb59f207b0b71"
+            ]
+        ]
+    },
+    {
+        "id": "23be3e6be8f5ddcb",
+        "type": "inject",
+        "z": "9b153dac8ea8e41f",
+        "name": "Ticket trafia do BOS",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "mode",
+                "v": "Agent",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"student_question\": \"Jak zresetować hasło do USOS?\", \"ticket_id\": 101, \"ticket_category\": \"IT Support\"}",
+        "payloadType": "json",
+        "x": 230,
+        "y": 160,
+        "wires": [
+            [
+                "6736143f2d51fecf"
+            ]
+        ]
+    },
+    {
+        "id": "6736143f2d51fecf",
+        "type": "switch",
+        "z": "9b153dac8ea8e41f",
+        "name": "Decyzja: Sam czy Agent?",
+        "property": "mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Manual",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "Agent",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 530,
+        "y": 220,
+        "wires": [
+            [
+                "c41b4038b29313bf"
+            ],
+            [
+                "9c74463057c77acc"
+            ]
+        ]
+    },
+    {
+        "id": "9b108eed1e397bef",
+        "type": "function",
+        "z": "9b153dac8ea8e41f",
+        "name": "Qdrant: przeszukanie bazy na podstawie kategorii",
+        "func": "// Tutaj tworzymy payload do Qdrant z filtrem kategorii\n\nmsg.qdrant_payload = {\n    \"vector\": [0.1, 0.2, 0.3], // Tu byłby prawdziwy wektor z OpenAI\n    \"filter\": {\n        \"must\": [\n            {\n                \"key\": \"ticket_category\",\n                \"match\": {\n                    \"value\": msg.payload.ticket_category // Np. \"IT Support\"\n                }\n            }\n        ]\n    },\n    \"limit\": 3\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 340,
+        "wires": [
+            [
+                "bb8bb9970ea945ff"
+            ]
+        ]
+    },
+    {
+        "id": "bfc3634b2d46a390",
+        "type": "switch",
+        "z": "9b153dac8ea8e41f",
+        "name": "Decyzja: Czy odpowiedź jest wystarczająca?",
+        "property": "is_answer_enough",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "false"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1010,
+        "y": 480,
+        "wires": [
+            [
+                "145ba6109544d61e"
+            ],
+            [
+                "78b5cda487dd6ab7"
+            ]
+        ]
+    },
+    {
+        "id": "d655c8430c6441b4",
+        "type": "function",
+        "z": "9b153dac8ea8e41f",
+        "name": "Qdrant: Przeszukanie całej bazy",
+        "func": "// Tutaj tworzymy payload do Qdrant z filtrem kategorii\n\nmsg.qdrant_payload = {\n    \"vector\": [0.1, 0.2, 0.3], // Tu byłby prawdziwy wektor z OpenAI\n    \"limit\": 5\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1530,
+        "y": 600,
+        "wires": [
+            [
+                "23508e21abd0d53e"
+            ]
+        ]
+    },
+    {
+        "id": "abaa757c115a8463",
+        "type": "function",
+        "z": "9b153dac8ea8e41f",
+        "name": "Qdrant: Przesłanie formularza do bazy",
+        "func": "// Przygotowanie punktu do zapisu w bazie wektorowej\nmsg.qdrant_upsert = {\n    \"points\": [\n        {\n            \"id\": msg.payload.ticket_id,\n            \"vector\": [0.1, 0.2, 0.3], // Nowy embedding pary Pytanie+Odpowiedź\n            \"payload\": {\n                \"student_question\": msg.payload.student_question,\n                \"ticket_category\": msg.payload.ticket_category,\n                \"bos_answer\": msg.bos_answer\n            }\n        }\n    ]\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1890,
+        "y": 360,
+        "wires": [
+            [
+                "4ceec9bcf68c4de2"
+            ]
+        ]
+    },
+    {
+        "id": "23508e21abd0d53e",
+        "type": "function",
+        "z": "9b153dac8ea8e41f",
+        "name": "Formularz: Odpowiedź do studenta",
+        "func": "msg.form_answer = \"Musisz wejść na stronę reset.wsb.gda.pl\"\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1760,
+        "y": 280,
+        "wires": [
+            [
+                "abaa757c115a8463"
+            ]
+        ]
+    },
+    {
+        "id": "78b5cda487dd6ab7",
+        "type": "function",
+        "z": "9b153dac8ea8e41f",
+        "name": "Formularz: Odpowiedź agenta jest niewystarczająca",
+        "func": "msg.form_is_response_correct = \"No\"\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1380,
+        "y": 540,
+        "wires": [
+            [
+                "d655c8430c6441b4"
+            ]
+        ]
+    },
+    {
+        "id": "4ceec9bcf68c4de2",
+        "type": "debug",
+        "z": "9b153dac8ea8e41f",
+        "name": "Zamknięcie ticketu",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1970,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "c41b4038b29313bf",
+        "type": "function",
+        "z": "9b153dac8ea8e41f",
+        "name": "Formularz: Pracownik pracuje samodzielnie",
+        "func": "msg.form_source = \"Pracownik\"\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 830,
+        "y": 160,
+        "wires": [
+            [
+                "23508e21abd0d53e"
+            ]
+        ]
+    },
+    {
+        "id": "145ba6109544d61e",
+        "type": "function",
+        "z": "9b153dac8ea8e41f",
+        "name": "Formularz: odpowiedź wystarczająca",
+        "func": "msg.form_is_response_correct = \"Yes\"\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1330,
+        "y": 420,
+        "wires": [
+            [
+                "23508e21abd0d53e"
+            ]
+        ]
+    },
+    {
+        "id": "9c74463057c77acc",
+        "type": "function",
+        "z": "9b153dac8ea8e41f",
+        "name": "Formularz: Pracownik korzysta z pomocy agenta ",
+        "func": "msg.form_source = \"Agent\"\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 840,
+        "y": 280,
+        "wires": [
+            [
+                "9b108eed1e397bef"
+            ]
+        ]
+    },
+    {
+        "id": "bb8bb9970ea945ff",
+        "type": "function",
+        "z": "9b153dac8ea8e41f",
+        "name": "Pracownik analizuje poprawność odpowiedzi",
+        "func": "msg.is_answer_enough = false\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 400,
+        "wires": [
+            [
+                "bfc3634b2d46a390"
+            ]
+        ]
+    },
+    {
+        "id": "8e3d8f78846521a4",
+        "type": "inject",
+        "z": "3172235a74acd0aa",
+        "name": "Student: Nowe Zgłoszenie",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"question\": \"Jak zresetować hasło do USOS?\", \"ticket_id\": 101}",
+        "payloadType": "json",
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "14cfddd6012d7bae"
+            ]
+        ]
+    },
+    {
+        "id": "14cfddd6012d7bae",
+        "type": "function",
+        "z": "3172235a74acd0aa",
+        "name": "Pracownik: Kategoryzacja i Decyzja",
+        "func": "// Symulacja działania pracownika w panelu BOS\n// Wybiera kategorię i tryb działania\n\nmsg.category = \"IT Support\"; // Wybrana kategoria\nmsg.mode = \"Agent\"; // Opcje: \"Manual\" lub \"Agent\"\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 100,
+        "wires": [
+            [
+                "8712043999aa7f84"
+            ]
+        ]
+    },
+    {
+        "id": "8712043999aa7f84",
+        "type": "switch",
+        "z": "3172235a74acd0aa",
+        "name": "Decyzja: Sam czy Agent?",
+        "property": "mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Manual",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "Agent",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 750,
+        "y": 100,
+        "wires": [
+            [
+                "99efbd7fa1bcd476"
+            ],
+            [
+                "754594fca1dcf8a2"
+            ]
+        ]
+    },
+    {
+        "id": "99efbd7fa1bcd476",
+        "type": "function",
+        "z": "3172235a74acd0aa",
+        "name": "Pracownik: Odpisuje ręcznie",
+        "func": "msg.answer = \"Musisz wejść na stronę reset.uni.edu.pl\";\nmsg.source = \"Manual Knowledge\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 100,
+        "wires": [
+            [
+                "cdc791b53b74adb7"
+            ]
+        ]
+    },
+    {
+        "id": "754594fca1dcf8a2",
+        "type": "function",
+        "z": "3172235a74acd0aa",
+        "name": "Qdrant: Search (Filtered)",
+        "func": "// Tutaj tworzymy payload do Qdrant z filtrem kategorii\n\nmsg.qdrant_payload = {\n    \"vector\": [0.1, 0.2, 0.3], // Tu byłby prawdziwy wektor z OpenAI\n    \"filter\": {\n        \"must\": [\n            {\n                \"key\": \"category\",\n                \"match\": {\n                    \"value\": msg.category // Np. \"IT Support\"\n                }\n            }\n        ]\n    },\n    \"limit\": 3\n};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 340,
+        "wires": [
+            [
+                "05a2ef8a57f1cf38"
+            ]
+        ]
+    },
+    {
+        "id": "05a2ef8a57f1cf38",
+        "type": "function",
+        "z": "3172235a74acd0aa",
+        "name": "Agent: Generuje odpowiedź",
+        "func": "// Symulacja odpowiedzi LLM na podstawie znalezionych dokumentów\nmsg.agent_response = \"Znaleziono w dokumentacji IT: Aby zresetować hasło...\";\nmsg.found_docs = [\"Doc ID: 55\", \"Doc ID: 12\"];\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 340,
+        "wires": [
+            [
+                "08e63b5a5ad92c36"
+            ]
+        ]
+    },
+    {
+        "id": "08e63b5a5ad92c36",
+        "type": "function",
+        "z": "3172235a74acd0aa",
+        "name": "Pracownik: Weryfikacja (UI)",
+        "func": "// Symulacja kliknięcia przycisku w interfejsie\n// Zmień na \"Reject\", aby przetestować drugą ścieżkę\nmsg.review_status = \"Approve\"; \n// msg.review_status = \"Reject\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 880,
+        "y": 340,
+        "wires": [
+            [
+                "0ceec69288208aeb"
+            ]
+        ]
+    },
+    {
+        "id": "0ceec69288208aeb",
+        "type": "switch",
+        "z": "3172235a74acd0aa",
+        "name": "Zatwierdzone?",
+        "property": "review_status",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Approve",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "Reject",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1100,
+        "y": 340,
+        "wires": [
+            [
+                "42dbd6df8452802e"
+            ],
+            [
+                "2c7c759c7bf9e337"
+            ]
+        ]
+    },
+    {
+        "id": "2c7c759c7bf9e337",
+        "type": "function",
+        "z": "3172235a74acd0aa",
+        "name": "Qdrant: Search (Global)",
+        "func": "// Wyszukiwanie BEZ FILTRA kategorii\nmsg.qdrant_payload = {\n    \"vector\": [0.1, 0.2, 0.3],\n    \"limit\": 5,\n    \"with_payload\": true\n    // Brak sekcji \"filter\"!\n};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1110,
+        "y": 480,
+        "wires": [
+            [
+                "896ce9cbf9d8cbb3"
+            ]
+        ]
+    },
+    {
+        "id": "896ce9cbf9d8cbb3",
+        "type": "function",
+        "z": "3172235a74acd0aa",
+        "name": "Pracownik: Odpowiedź po Odrzuceniu",
+        "func": "msg.answer = \"Znalazłem rozwiązanie w innej kategorii (FAQ). Oto ono...\";\nmsg.source = \"Global Search + Human\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1450,
+        "y": 500,
+        "wires": [
+            [
+                "cdc791b53b74adb7"
+            ]
+        ]
+    },
+    {
+        "id": "42dbd6df8452802e",
+        "type": "change",
+        "z": "3172235a74acd0aa",
+        "name": "Ustaw odpowiedź agenta",
+        "rules": [
+            {
+                "t": "set",
+                "p": "answer",
+                "pt": "msg",
+                "to": "agent_response",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "source",
+                "pt": "msg",
+                "to": "Agent (Approved)",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1350,
+        "y": 340,
+        "wires": [
+            [
+                "cdc791b53b74adb7"
+            ]
+        ]
+    },
+    {
+        "id": "cdc791b53b74adb7",
+        "type": "function",
+        "z": "3172235a74acd0aa",
+        "name": "Qdrant: UPSERT (Zapisz Wiedzę)",
+        "func": "// Przygotowanie punktu do zapisu w bazie wektorowej\nmsg.qdrant_upsert = {\n    \"points\": [\n        {\n            \"id\": msg.payload.ticket_id,\n            \"vector\": [0.1, 0.2, 0.3], // Nowy embedding pary Pytanie+Odpowiedź\n            \"payload\": {\n                \"question\": msg.payload.question,\n                \"answer\": msg.answer,\n                \"category\": msg.category,\n                \"source\": msg.source\n            }\n        }\n    ]\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1360,
+        "y": 200,
+        "wires": [
+            [
+                "ec00a14a8dc5e5f5"
+            ]
+        ]
+    },
+    {
+        "id": "ec00a14a8dc5e5f5",
+        "type": "debug",
+        "z": "3172235a74acd0aa",
+        "name": "LOG: Baza Zaktualizowana",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1640,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "5b39043e7b81ebdd",
+        "type": "inject",
+        "z": "957342e538411072",
+        "name": "Testowy tekst osobowy",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"input\":\"Jan Kowalski, PESEL 12345678901, email: jan.kowalski@example.com, adres: ul. Przykładowa 12, 00-001 Warszawa\"}",
+        "payloadType": "json",
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "f72e4876ea26b085"
+            ]
+        ]
+    },
+    {
+        "id": "f72e4876ea26b085",
+        "type": "http request",
+        "z": "957342e538411072",
+        "name": "Wywołaj Agenta 5",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent5_security:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 400,
+        "y": 100,
+        "wires": [
+            [
+                "23cca57e0645f8db"
+            ]
+        ]
+    },
+    {
+        "id": "23cca57e0645f8db",
+        "type": "debug",
+        "z": "957342e538411072",
+        "name": "Odpowiedź Agenta 5",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 640,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "8ea07cb58212bae0",
+        "type": "inject",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 1 – test chatbot",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 140,
+        "y": 80,
+        "wires": [
+            [
+                "825d8ba8dfa6d69c"
+            ]
+        ]
+    },
+    {
+        "id": "825d8ba8dfa6d69c",
+        "type": "function",
+        "z": "36fe8c50d5ed6980",
+        "name": "Payload AGENT 1",
+        "func": "msg.payload = {\n  user_id: \"student_001\",\n  text: \"Do kiedy trwa rekrutacja na semestr letni?\"\n};\nreturn msg;",
+        "outputs": 1,
+        "x": 360,
+        "y": 80,
+        "wires": [
+            [
+                "a29760c72bd3d5a7"
+            ]
+        ]
+    },
+    {
+        "id": "a29760c72bd3d5a7",
+        "type": "http request",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 1",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent1_student:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 560,
+        "y": 80,
+        "wires": [
+            [
+                "8b6ab1a791d2554c"
+            ]
+        ]
+    },
+    {
+        "id": "8b6ab1a791d2554c",
+        "type": "debug",
+        "z": "36fe8c50d5ed6980",
+        "name": "DEBUG AGENT 1",
+        "active": false,
+        "tosidebar": true,
+        "complete": "payload",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "8e828e90530accd0",
+        "type": "inject",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 2 – test ticket",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 140,
+        "y": 160,
+        "wires": [
+            [
+                "b620bc30feceb7dc"
+            ]
+        ]
+    },
+    {
+        "id": "b620bc30feceb7dc",
+        "type": "function",
+        "z": "36fe8c50d5ed6980",
+        "name": "Payload AGENT 2",
+        "func": "msg.payload = {\n  ticket_id: \"TCK-1001\",\n  text: \"Nie mogę zapisać się na przedmiot – błąd USOS\"\n};\nreturn msg;",
+        "outputs": 1,
+        "x": 360,
+        "y": 160,
+        "wires": [
+            [
+                "d3ddbe969497b1b5"
+            ]
+        ]
+    },
+    {
+        "id": "d3ddbe969497b1b5",
+        "type": "http request",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 2",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent2_ticket:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 560,
+        "y": 160,
+        "wires": [
+            [
+                "6055789e27df19fc"
+            ]
+        ]
+    },
+    {
+        "id": "6055789e27df19fc",
+        "type": "debug",
+        "z": "36fe8c50d5ed6980",
+        "name": "DEBUG AGENT 2",
+        "active": false,
+        "complete": "payload",
+        "x": 760,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "5f16e96c065772e9",
+        "type": "inject",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 3 – test analizy",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 140,
+        "y": 240,
+        "wires": [
+            [
+                "eaa66d939e8b50b6"
+            ]
+        ]
+    },
+    {
+        "id": "eaa66d939e8b50b6",
+        "type": "function",
+        "z": "36fe8c50d5ed6980",
+        "name": "Payload AGENT 3",
+        "func": "msg.payload = {\n  data: [\n    {\"category\": \"IT\", \"count\": 42},\n    {\"category\": \"Stypendia\", \"count\": 18}\n  ]\n};\nreturn msg;",
+        "outputs": 1,
+        "x": 360,
+        "y": 240,
+        "wires": [
+            [
+                "cc87fd2d097178aa"
+            ]
+        ]
+    },
+    {
+        "id": "cc87fd2d097178aa",
+        "type": "http request",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 3",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent3_analytics:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 560,
+        "y": 240,
+        "wires": [
+            [
+                "71ea49811b12aea6"
+            ]
+        ]
+    },
+    {
+        "id": "71ea49811b12aea6",
+        "type": "debug",
+        "z": "36fe8c50d5ed6980",
+        "name": "DEBUG AGENT 3",
+        "active": false,
+        "complete": "payload",
+        "x": 760,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "7d28c8f2d4b1e9ae",
+        "type": "inject",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 4 – test BOS",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 140,
+        "y": 320,
+        "wires": [
+            [
+                "0f7aec2c4e03659b"
+            ]
+        ]
+    },
+    {
+        "id": "0f7aec2c4e03659b",
+        "type": "function",
+        "z": "36fe8c50d5ed6980",
+        "name": "Payload AGENT 4",
+        "func": "msg.payload = {\n  context: \"Student pyta o urlop dziekański\",\n  task: \"Przygotuj szkic odpowiedzi\"\n};\nreturn msg;",
+        "outputs": 1,
+        "x": 360,
+        "y": 320,
+        "wires": [
+            [
+                "c9dd56895b6599b3"
+            ]
+        ]
+    },
+    {
+        "id": "c9dd56895b6599b3",
+        "type": "http request",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 4",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent4_bos:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 560,
+        "y": 320,
+        "wires": [
+            [
+                "24d69c127aad9a0b"
+            ]
+        ]
+    },
+    {
+        "id": "24d69c127aad9a0b",
+        "type": "debug",
+        "z": "36fe8c50d5ed6980",
+        "name": "DEBUG AGENT 4",
+        "active": false,
+        "complete": "payload",
+        "x": 760,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "2bb961515f44d01a",
+        "type": "inject",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 5 – test RODO",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 140,
+        "y": 400,
+        "wires": [
+            [
+                "c09af01911354486"
+            ]
+        ]
+    },
+    {
+        "id": "c09af01911354486",
+        "type": "function",
+        "z": "36fe8c50d5ed6980",
+        "name": "Payload AGENT 5",
+        "func": "msg.payload = {\n  text: \"Jan Kowalski, PESEL 90010112345, prośba o zaświadczenie\"\n};\nreturn msg;",
+        "outputs": 1,
+        "x": 360,
+        "y": 400,
+        "wires": [
+            [
+                "1ba4aaa6e2510d3f"
+            ]
+        ]
+    },
+    {
+        "id": "1ba4aaa6e2510d3f",
+        "type": "http request",
+        "z": "36fe8c50d5ed6980",
+        "name": "AGENT 5",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://agent5_security:8000/run",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 560,
+        "y": 400,
+        "wires": [
+            [
+                "0137c28645f37eaf"
+            ]
+        ]
+    },
+    {
+        "id": "0137c28645f37eaf",
+        "type": "debug",
+        "z": "36fe8c50d5ed6980",
+        "name": "DEBUG AGENT 5",
+        "active": false,
+        "complete": "payload",
+        "x": 760,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "a9dee07f4b365c26",
+        "type": "inject",
+        "z": "f332562e163893c3",
+        "name": "START – zapytanie studenta",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 140,
+        "y": 120,
+        "wires": [
+            [
+                "cb862cd323f365be"
+            ]
+        ]
+    },
+    {
+        "id": "cb862cd323f365be",
+        "type": "function",
+        "z": "f332562e163893c3",
+        "name": "Prepare input",
+        "func": "msg.payload = {\n  input: \"Nie mogę zapisać się na przedmiot – system pokazuje błąd\",\n  user_role: \"student\",\n  trace_id: Date.now().toString(),\n  timestamp: new Date().toISOString()\n};\nreturn msg;",
+        "outputs": 1,
+        "x": 140,
+        "y": 260,
+        "wires": [
+            [
+                "4bcf5a4ea4f2e324"
+            ]
+        ]
+    },
+    {
+        "id": "4bcf5a4ea4f2e324",
+        "type": "http request",
+        "z": "f332562e163893c3",
+        "name": "AGENT 5 – security PRE",
+        "method": "POST",
+        "ret": "obj",
+        "url": "http://agent5_security:8000/run",
+        "x": 190,
+        "y": 400,
+        "wires": [
+            [
+                "4fe1232054804242"
+            ]
+        ]
+    },
+    {
+        "id": "4fe1232054804242",
+        "type": "http request",
+        "z": "f332562e163893c3",
+        "name": "AGENT 2 – klasyfikacja",
+        "method": "POST",
+        "ret": "obj",
+        "url": "http://agent2_ticket:8000/run",
+        "x": 590,
+        "y": 120,
+        "wires": [
+            [
+                "f0d20be437fdafcc"
+            ]
+        ]
+    },
+    {
+        "id": "f0d20be437fdafcc",
+        "type": "switch",
+        "z": "f332562e163893c3",
+        "name": "Routing",
+        "property": "payload.category",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "FAQ"
+            },
+            {
+                "t": "neq",
+                "v": "FAQ"
+            }
+        ],
+        "checkall": "true",
+        "outputs": 1,
+        "x": 600,
+        "y": 240,
+        "wires": [
+            [
+                "05460500a60047bb"
+            ]
+        ]
+    },
+    {
+        "id": "05460500a60047bb",
+        "type": "http request",
+        "z": "f332562e163893c3",
+        "name": "AGENT 1 – chatbot",
+        "method": "POST",
+        "ret": "obj",
+        "url": "http://agent1_student:8000/run",
+        "x": 490,
+        "y": 720,
+        "wires": [
+            [
+                "a714c283ef4fd808"
+            ]
+        ]
+    },
+    {
+        "id": "2c1c3dd128abc7f4",
+        "type": "http request",
+        "z": "f332562e163893c3",
+        "name": "AGENT 4 – BOS",
+        "method": "POST",
+        "ret": "obj",
+        "url": "http://agent4_bos:8000/run",
+        "x": 930,
+        "y": 200,
+        "wires": [
+            [
+                "a714c283ef4fd808"
+            ]
+        ]
+    },
+    {
+        "id": "a714c283ef4fd808",
+        "type": "http request",
+        "z": "f332562e163893c3",
+        "name": "AGENT 5 – security POST",
+        "method": "POST",
+        "ret": "obj",
+        "url": "http://agent5_security:8000/run",
+        "x": 860,
+        "y": 320,
+        "wires": [
+            [
+                "ec6df9304ce99eb8",
+                "eb480b6e43f6aed9"
+            ]
+        ]
+    },
+    {
+        "id": "ec6df9304ce99eb8",
+        "type": "function",
+        "z": "f332562e163893c3",
+        "name": "Emit event → AGENT 3",
+        "func": "return {\n  payload: {\n    trace_id: msg.payload.trace_id,\n    category: msg.payload.category || \"unknown\",\n    timestamp: new Date().toISOString(),\n    source: \"orchestrator\"\n  }\n};",
+        "outputs": 1,
+        "x": 1130,
+        "y": 440,
+        "wires": [
+            [
+                "e8b6d979672566d0"
+            ]
+        ]
+    },
+    {
+        "id": "e8b6d979672566d0",
+        "type": "http request",
+        "z": "f332562e163893c3",
+        "name": "AGENT 3 – analiza (ASYNC)",
+        "method": "POST",
+        "ret": "obj",
+        "url": "http://agent3_analytics:8000/run",
+        "x": 1240,
+        "y": 580,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "eb480b6e43f6aed9",
+        "type": "debug",
+        "z": "f332562e163893c3",
+        "name": "FINAL OUTPUT (user)",
+        "active": true,
+        "complete": "payload",
+        "x": 1260,
+        "y": 260,
+        "wires": []
+    }
+]
