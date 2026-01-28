@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agent4 BOS - Monitorowanie protokołów</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            background: white;
+            border-radius: 12px; 
+            padding: 30px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: #2c3e50; 
+            text-align: center; 
+            margin-bottom: 30px;
+            background: linear-gradient(90deg, #2ecc71 0%, #27ae60 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        label { 
+            display: block; 
+            margin-top: 15px; 
+            font-weight: 600; 
+            color: #34495e;
+        }
+        textarea, input[type="text"] { 
+            width: 100%; 
+            padding: 12px; 
+            margin-top: 8px; 
+            border: 2px solid #ddd; 
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        textarea:focus, input[type="text"]:focus {
+            border-color: #2ecc71;
+            outline: none;
+        }
+        textarea { 
+            height: 180px; 
+            resize: vertical; 
+            font-family: monospace;
+        }
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .btn { 
+            padding: 14px 28px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .btn-success { 
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white; 
+        }
+        .btn-danger { 
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white; 
+        }
+        .btn-info { 
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white; 
+        }
+        .message {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 6px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .success { 
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724; 
+            border-left: 4px solid #28a745;
+        }
+        .error { 
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24; 
+            border-left: 4px solid #dc3545;
+        }
+        .info { 
+            background: linear-gradient(135deg, #e8f4fd 0%, #d1ecf1 100%);
+            color: #004085; 
+            border-left: 4px solid #3498db;
+        }
+        
+        /* Modal/Response Window */
+        .response-window {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            z-index: 1000;
+            overflow: hidden;
+            animation: modalFadeIn 0.3s ease;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .modal-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        .modal-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .modal-content {
+            padding: 25px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .response-text {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 20px;
+        }
+        .response-meta {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #b8daff;
+            font-size: 14px;
+        }
+        .response-meta div {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .response-meta i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 12px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1001;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2ecc71;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .nav-links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+        .nav-links a {
+            color: #2ecc71;
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+        .nav-links a:hover {
+            background: #f0fff4;
+            transform: translateX(5px);
+        }
+        
+        .example-questions {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .example-questions h4 {
+            margin-top: 0;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .example-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .example-item {
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .example-item:hover {
+            background: #e9f7ef;
+            border-color: #2ecc71;
+            transform: translateX(5px);
+        }
+    </style>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-clipboard-check"></i> Agent4 BOS - Monitorowanie protokołów</h1>
+        <div class="section">
+            <h3><i class="fas fa-edit"></i> Zadaj pytanie o protokoły</h3>
+            
+            <div class="example-questions">
+                <h4><i class="fas fa-lightbulb"></i> Przykładowe pytania:</h4>
+                <div class="example-list">
+                    <div class="example-item" onclick="setExample('Ile jest otwartych protokołów?')">Ile jest otwartych protokołów?</div>
+                    <div class="example-item" onclick="setExample('Podaj listę profesorów z otwartymi protokołami')">Lista profesorów z otwartymi protokołami</div>
+                    <div class="example-item" onclick="setExample('Ile protokołów jest zamkniętych?')">Ile protokołów jest zamkniętych?</div>
+                    <div class="example-item" onclick="setExample('Które grupy mają otwarte protokoły?')">Które grupy mają otwarte protokoły?</div>
+                    <div class="example-item" onclick="setExample('Podaj statystyki wszystkich protokołów')">Statystyki wszystkich protokołów</div>
+                    <div class="example-item" onclick="setExample('Którzy profesorowie nie zamknęli jeszcze protokołów?')">Profesorowie z niezamkniętymi protokołami</div>
+                </div>
+            </div>
+            
+            <div id="message" class="message"></div>
+            
+            <form id="protocolForm">
+                <label for="queryField"><i class="fas fa-question-circle"></i> Twoje pytanie:</label>
+                <textarea id="queryField" name="query" placeholder="Np. Ile jest otwartych protokołów? Którzy profesorowie nie zamknęli protokołów?" required></textarea>
+                
+                <div class="btn-container">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-search"></i> Sprawdź protokoły
+                    </button>
+                    <button type="button" onclick="clearForm()" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Wyczyść
+                    </button>
+                    <button type="button" onclick="loadProtocolStats()" class="btn btn-info">
+                        <i class="fas fa-sync-alt"></i> Odśwież statystyki
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="nav-links">
+            <a href="/">
+                <i class="fas fa-arrow-left"></i> Powrót do głównej strony
+            </a>
+            <a href="/run_page">
+                <i class="fas fa-robot"></i> Agent wsparcia BOS
+            </a>
+            <a href="/docs" target="_blank">
+                <i class="fas fa-book"></i> Dokumentacja API
+            </a>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <h3>Przetwarzanie zapytania...</h3>
+        <p>Agent analizuje bazę protokołów. To może zająć kilka sekund.</p>
+        <div id="loadingProgress"></div>
+    </div>
+    
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+    
+    <!-- Response Window Modal -->
+    <div class="response-window" id="responseWindow">
+        <div class="modal-header">
+            <h2><i class="fas fa-clipboard-check"></i> Wynik analizy protokołów</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-content">
+            <div class="response-text" id="responseContent">
+                Tutaj pojawi się odpowiedź agenta...
+            </div>
+            
+            <div class="response-meta" id="responseMeta">
+                <div><i class="fas fa-question-circle"></i> <strong>Pytanie:</strong> <span id="questionText">...</span></div>
+                <div><i class="fas fa-cogs"></i> <strong>Model:</strong> <span id="modelName">Llama 3</span></div>
+                <div><i class="fas fa-clock"></i> <strong>Czas:</strong> <span id="responseTime">0.0s</span></div>
+                <div><i class="fas fa-database"></i> <strong>Baza:</strong> <span id="databaseName">university_protocols</span></div>
+                <div><i class="fas fa-calendar"></i> <strong>Data:</strong> <span id="responseDate">-</span></div>
+            </div>
+            
+            <div class="btn-container" style="margin-top: 20px;">
+                <button onclick="copyToClipboard()" class="btn btn-success">
+                    <i class="fas fa-copy"></i> Kopiuj odpowiedź
+                </button>
+                <button onclick="downloadResponse()" class="btn btn-info">
+                    <i class="fas fa-download"></i> Pobierz raport
+                </button>
+                <button onclick="closeModal()" class="btn btn-danger">
+                    <i class="fas fa-times"></i> Zamknij
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Load protocol statistics on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProtocolStats();
+        });
+
+        // Load protocol statistics
+        function loadProtocolStats() {
+            // Simple query to get stats
+            fetch('/protocols', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query: "Podaj statystyki protokołów" })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('openProtocols').textContent = data.statistics.open_protocols;
+                    document.getElementById('pendingProtocols').textContent = data.statistics.pending_protocols;
+                    document.getElementById('closedProtocols').textContent = data.statistics.closed_protocols;
+                    document.getElementById('totalProtocols').textContent = data.statistics.total_protocols;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading stats:', error);
+                showMessage('error', 'Błąd ładowania statystyk');
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('protocolForm').reset();
+            showMessage('info', 'Formularz wyczyszczony. Możesz wprowadzić nowe pytanie.');
+        }
+
+        function setExample(text) {
+            document.getElementById('queryField').value = text;
+            showMessage('info', 'Przykład załadowany. Możesz go zmodyfikować.');
+        }
+
+        function showMessage(type, text) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.className = 'message ' + type;
+            msgDiv.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle') + '"></i> ' + text;
+            msgDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            let dots = 0;
+            const progress = document.getElementById('loadingProgress');
+            
+            const interval = setInterval(() => {
+                dots = (dots + 1) % 4;
+                if (progress) {
+                    progress.innerHTML = 'Trwa analiza' + '.'.repeat(dots);
+                }
+            }, 500);
+            
+            return interval;
+        }
+
+        function hideLoading(interval) {
+            document.getElementById('loading').style.display = 'none';
+            if (interval) clearInterval(interval);
+        }
+
+        function showResponseModal(response, responseTime) {
+            // Update response content
+            document.getElementById('responseContent').textContent = response.message || 'Brak odpowiedzi';
+            document.getElementById('questionText').textContent = response.query;
+            document.getElementById('responseTime').textContent = responseTime + 's';
+            document.getElementById('responseDate').textContent = new Date().toLocaleString('pl-PL');
+            
+            // Show modal and overlay
+            document.getElementById('responseWindow').style.display = 'block';
+            document.getElementById('modalOverlay').style.display = 'block';
+            
+            // Update stats if available
+            if (response.statistics) {
+                document.getElementById('openProtocols').textContent = response.statistics.open_protocols;
+                document.getElementById('pendingProtocols').textContent = response.statistics.pending_protocols;
+                document.getElementById('closedProtocols').textContent = response.statistics.closed_protocols;
+                document.getElementById('totalProtocols').textContent = response.statistics.total_protocols;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('responseWindow').style.display = 'none';
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        function copyToClipboard() {
+            const responseText = document.getElementById('responseContent').textContent;
+            navigator.clipboard.writeText(responseText).then(() => {
+                showMessage('success', 'Odpowiedź skopiowana do schowka!');
+            }).catch(err => {
+                showMessage('error', 'Błąd kopiowania: ' + err);
+            });
+        }
+
+        function downloadResponse() {
+            const responseText = document.getElementById('responseContent').textContent;
+            const question = document.getElementById('questionText').textContent;
+            const meta = 'PYTANIE: ' + question + '\n' +
+                        'DATA: ' + document.getElementById('responseDate').textContent + '\n' +
+                        'CZAS: ' + document.getElementById('responseTime').textContent + '\n\n' +
+                        'RAPORT:\n' + '='.repeat(50) + '\n\n';
+            
+            const blob = new Blob([meta + responseText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'raport-protokoly-' + new Date().toISOString().slice(0,10) + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage('success', 'Raport pobrany!');
+        }
+
+        // THE KEY FUNCTION - prevents form reload
+        document.getElementById('protocolForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const query = document.getElementById('queryField').value;
+            
+            if (!query.trim()) {
+                showMessage('error', 'Proszę wprowadzić pytanie o protokoły');
+                return;
+            }
+            
+            // Show loading
+            const loadingInterval = showLoading();
+            const startTime = Date.now();
+            
+            try {
+                // Call the protocols endpoint
+                const response = await fetch('/protocols', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                const endTime = Date.now();
+                const responseTime = ((endTime - startTime) / 1000).toFixed(1);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error('HTTP ' + response.status + ': ' + errorText);
+                }
+                
+                const result = await response.json();
+                
+                // Hide loading
+                hideLoading(loadingInterval);
+                
+                // Show response in modal
+                showResponseModal(result, responseTime);
+                
+                // Clear form after successful response
+                if (result.success) {
+                    this.reset();
+                }
+                
+            } catch (error) {
+                hideLoading(loadingInterval);
+                showMessage('error', 'Błąd: ' + error.message);
+                console.error('API Error:', error);
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter to submit
+            if (e.ctrlKey && e.key === 'Enter') {
+                document.getElementById('protocolForm').dispatchEvent(new Event('submit'));
+                e.preventDefault();
+            }
+            // Escape to close modal
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Close modal when clicking overlay
+        document.getElementById('modalOverlay').addEventListener('click', closeModal);
+
+        // Prevent modal close when clicking inside modal
+        document.getElementById('responseWindow').addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    </script>
+</body>
+</html>

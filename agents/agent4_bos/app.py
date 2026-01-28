@@ -11,7 +11,10 @@ from web.run_interface import run_app
 from api.support_api import handle_support_request
 from core.file_utils import get_case_count
 from core.file_utils import list_cases_summary
-from core.config import COLLECTION_NAME  # ADD THIS IMPORT
+from core.config import COLLECTION_NAME 
+from api.reporting_api import handle_protocol_request
+from web.reporting_interface import protocol_app
+from core.reporting_service import university_service
 # =========================
 # MAIN APP CONFIGURATION
 # =========================
@@ -41,6 +44,7 @@ app.add_middleware(
 # Mount sub-applications
 app.mount("/form", form_app)
 app.mount("/run_page", run_app)
+app.mount("/reporting_page", protocol_app)
 
 # =========================
 # MAIN APP ROUTES
@@ -120,6 +124,13 @@ async def support(query: str = Body(..., embed=True)):
     return await handle_support_request(query)
 
 
+# protocols reporting endpoint
+@app.post("/protocols")
+async def protocols(query: str = Body(..., embed=True)):
+    """Get information about university protocols, grades, and professors"""
+    return await handle_protocol_request(query)
+
+#all db cases endpoint
 @app.get("/cases")
 async def list_cases():
     """List all cases in database - uses file_utils service"""
@@ -127,9 +138,36 @@ async def list_cases():
     return {
         "cases": cases,
         "count": len(cases),
-        "database_path": f"qdrant://{COLLECTION_NAME}"  # CHANGED
+        "database_path": f"qdrant://{COLLECTION_NAME}" 
     }
 
+@app.get("/protocols_list")
+async def list_protocols(status: str = None):
+    """List all protocols in database"""
+    protocols = university_service.get_protocols(status=status)
+    
+    # Format protocols for display
+    formatted_protocols = []
+    for protocol in protocols:
+        formatted_protocols.append({
+            "protocol_id": protocol.get("protocol_id"),
+            "group_id": protocol.get("group_id"),
+            "status": protocol.get("status"),
+            "semester": protocol.get("semester"),
+            "deadline": protocol.get("deadline"),
+            "professor_id": protocol.get("professor_id"),
+            "created_at": protocol.get("created_at"),
+            "closed_at": protocol.get("closed_at")
+        })
+    
+    return {
+        "protocols": formatted_protocols,
+        "count": len(protocols),
+        "status_filter": status,
+        "database_path": f"qdrant://university_protocols"
+    }
+
+#db info endpoint
 @app.get("/info")
 async def get_database_info():
     """Get database information"""

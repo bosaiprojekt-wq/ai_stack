@@ -82,19 +82,20 @@
             <p>Dodawanie nowych przypadków do bazy wiedzy poprzez formularz HTML</p>
             <a href="/form" class="btn">Otwórz formularz</a>
         </div>
-        
-        <div class="card">
-            <h3><span class="icon">🤖</span> Interfejs AI</h3>
-            <p>Interfejs webowy do generowania odpowiedzi przez AI</p>
-            <a href="/run_page" class="btn">Uruchom AI</a>
-        </div>
-        
+
+                
         <div class="card">
             <h3><span class="icon">🔍</span> Wyszukiwanie w bazie</h3>
-            <p>Przeszukaj istniejące przypadki w bazie wiedzy</p>
-            <a href="/docs#/default/support_support_post" class="btn">Użyj API</a>
+            <p>Poszukaj przypadku w bazie wiedzy</p>
+            <a href="/run_page" class="btn">Użyj agenta</a>
         </div>
         
+        <div class="card">
+            <h3><span class="icon">📋</span>Raportowanie</h3>
+            <p>Agent przeszukuje bazę protokołow</p>
+            <a href="/reporting_page" class="btn">Uruchom agenta</a>
+        </div>
+
         <div class="card">
             <h3><span class="icon">📚</span> Dokumentacja API</h3>
             <p>Pełna dokumentacja wszystkich endpointów API</p>
@@ -125,9 +126,11 @@
         
         <h3>📡 Endpointy API:</h3>
         <ul>
-            <li><strong>POST /support</strong> - Generowanie odpowiedzi AI</li>
-            <li><strong>GET /run_page</strong> - Interfejs webowy AI</li>
-            <li><strong>GET /cases</strong> - Lista przypadków</li>
+            <li><strong>POST /support</strong> -Wyszukiwanie w bazie cases</li>
+            <li><strong>POST /protocols</strong> -Wyszukiwanie w bazie protokołów</li>
+            <li><strong>GET /run_page</strong> - Interfejs webowy dla /support</li>
+            <li><strong>GET /reporting_page</strong> - Interfejs webowy dla /protocols</li>
+            <li><strong>GET /cases</strong> - Lista przypadków (cases)</li>
             <li><strong>GET /health</strong> - Status serwisu</li>
             <li><strong>GET /form</strong> - Formularz HTML</li>
             <li><strong>POST /form/submit</strong> - Zapis formularza</li>
