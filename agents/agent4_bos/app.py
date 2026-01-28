@@ -10,7 +10,7 @@ from web.run_interface import run_app
 from api.support_api import handle_support_request
 from core.file_utils import get_case_count
 from core.config import JSON_FOLDER_PATH
-
+from core.file_utils import list_cases_summary
 # =========================
 # MAIN APP CONFIGURATION
 # =========================
@@ -116,6 +116,22 @@ async def support(query: str = Body(..., embed=True)):
     """Search for similar cases in knowledge base - uses API service"""
     return await handle_support_request(query)
 
+
+@app.get("/cases")
+async def list_cases():
+    """List all cases in database - uses file_utils service"""
+    cases = list_cases_summary()
+    return {
+        "cases": cases,
+        "count": len(cases),
+        "database_path": JSON_FOLDER_PATH
+    }
+
+@app.get("/info")
+async def get_database_info():
+    """Get database information"""
+    from core.file_utils import get_database_info
+    return get_database_info()
 
 #files testing endpoints
 @app.get("/test/files")

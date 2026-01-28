@@ -20,7 +20,7 @@ async def handle_support_request(query: str) -> dict:
             "database_path": JSON_FOLDER_PATH
         }
     
-    # Use the new support agent logic
+
     try:
         result = search_similar_case(query)
         

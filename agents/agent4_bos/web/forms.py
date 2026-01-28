@@ -3,14 +3,14 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 # Import from core modules
-from core.file_utils import save_case, list_cases_summary
+from core.file_utils import save_case
 from core.config import JSON_FOLDER_PATH
 
 # Create sub-app
 form_app = FastAPI(title="Form Application", description="HTML form for adding cases")
 # Import database service
 
-# Keep the existing FORM_HTML content exactly as is (no changes)
+
 FORM_HTML = """
 <!DOCTYPE html>
 <html>
@@ -200,18 +200,18 @@ async def submit_case(
             "message": f"Błąd podczas zapisywania: {str(e)}"
         }, status_code=500)
 
-@form_app.get("/cases")
-async def list_cases():
-    """List all cases in database - uses file_utils service"""
-    cases = list_cases_summary()
-    return {
-        "cases": cases,
-        "count": len(cases),
-        "database_path": JSON_FOLDER_PATH
-    }
+# @form_app.get("/cases")
+# async def list_cases():
+#     """List all cases in database - uses file_utils service"""
+#     cases = list_cases_summary()
+#     return {
+#         "cases": cases,
+#         "count": len(cases),
+#         "database_path": JSON_FOLDER_PATH
+#     }
 
-@form_app.get("/info")
-async def get_database_info():
-    """Get database information"""
-    from core.file_utils import get_database_info
-    return get_database_info()
+# @form_app.get("/info")
+# async def get_database_info():
+#     """Get database information"""
+#     from core.file_utils import get_database_info
+#     return get_database_info()
