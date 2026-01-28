@@ -4,3 +4,4 @@ langchain
 langchain-community
 python-multipart
 Jinja2
+qdrant-client

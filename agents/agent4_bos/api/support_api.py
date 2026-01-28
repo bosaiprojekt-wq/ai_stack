@@ -1,7 +1,8 @@
+# api/support_api.py - CLEAN VERSION
 from fastapi import HTTPException
 from core.support_agent import search_similar_case
 from core.file_utils import load_all_cases, get_case_count
-from core.config import JSON_FOLDER_PATH
+from core.config import COLLECTION_NAME  # ADD THIS
 
 async def handle_support_request(query: str) -> dict:
     """Handle /support endpoint request"""
@@ -17,7 +18,7 @@ async def handle_support_request(query: str) -> dict:
             "message": "Baza przypadków jest pusta. Dodaj przypadki przez formularz.",
             "cases_count": 0,
             "form_url": "/form",
-            "database_path": JSON_FOLDER_PATH
+            "database_path": f"qdrant://{COLLECTION_NAME}"
         }
     
 
@@ -32,7 +33,7 @@ async def handle_support_request(query: str) -> dict:
                 "confidence": 95,
                 "search_query": query,
                 "cases_searched": len(cases),
-                "database_path": JSON_FOLDER_PATH,
+                "database_path": f"qdrant://{COLLECTION_NAME}",
                 "source": "core_support_agent"
             }
         else:
@@ -41,7 +42,7 @@ async def handle_support_request(query: str) -> dict:
                 "found": False,
                 "search_query": query,
                 "cases_searched": len(cases),
-                "database_path": JSON_FOLDER_PATH,
+                "database_path": f"qdrant://{COLLECTION_NAME}",
                 "source": "core_support_agent"
             }
             
@@ -50,5 +51,5 @@ async def handle_support_request(query: str) -> dict:
             "message": "Wystąpił błąd podczas generowania odpowiedzi.",
             "error": str(e),
             "cases_count": len(cases),
-            "database_path": JSON_FOLDER_PATH
+            "database_path": f"qdrant://{COLLECTION_NAME}"
         }

@@ -1,15 +1,13 @@
-
+# web/forms.py - WITH FIXED FORM CLEARING
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 # Import from core modules
 from core.file_utils import save_case
-from core.config import JSON_FOLDER_PATH
+from core.config import COLLECTION_NAME
 
 # Create sub-app
 form_app = FastAPI(title="Form Application", description="HTML form for adding cases")
-# Import database service
-
 
 FORM_HTML = """
 <!DOCTYPE html>
@@ -90,7 +88,7 @@ FORM_HTML = """
         <h1>📝 Formularz przypadku</h1>
         
         <div class="info">
-            <strong>Informacja:</strong> Wypełnij formularz aby dodać nowy przypadek do bazy wiedzy.
+            <strong>Informacja:</strong> Wypełnij formularz aby dodać nowy przypadek do bazy wiedzy Qdrant.
             Po zapisaniu, przypadek będzie dostępny dla agenta AI.
         </div>
         
@@ -133,21 +131,27 @@ FORM_HTML = """
             submitBtn.disabled = true;
             
             try {
+                console.log('Form submitted with data:', Object.fromEntries(formData));
+                
                 const response = await fetch('/form/submit', {
                     method: 'POST',
                     body: formData
                 });
                 
+                console.log('Response status:', response.status);
                 const result = await response.json();
+                console.log('Response data:', result);
                 
                 if (result.status === 'success') {
                     showMessage('success', '✅ Przypadek został pomyślnie zapisany! ID: ' + result.case_id);
-                    // Clear form
+                    // Clear form - FIXED: Use this.reset() on the form element
                     this.reset();
+                    console.log('Form cleared');
                 } else {
                     showMessage('error', '❌ Błąd: ' + (result.message || 'Nie udało się zapisać przypadku'));
                 }
             } catch (error) {
+                console.error('Error:', error);
                 showMessage('error', '❌ Błąd połączenia: ' + error.message);
             } finally {
                 // Restore button
@@ -167,10 +171,14 @@ FORM_HTML = """
                 msgDiv.style.display = 'none';
             }, 5000);
         }
+        
+        // Debug: Log when page loads
+        console.log('Form page loaded');
     </script>
 </body>
 </html>
 """
+
 @form_app.get("/")
 async def get_form(request: Request):
     """Serve the HTML form"""
@@ -187,11 +195,12 @@ async def submit_case(
     """Handle form submission - uses file_utils service"""
     try:
         result = save_case(Tytul, Autor, Opis, Rozwiazanie, Uwagi)
+        
+        # Return the exact structure JavaScript expects
         return JSONResponse({
             "status": "success",
             "message": "Przypadek zapisany pomyślnie",
             "case_id": result["case_id"],
-            "file": result["file_path"],
             "data": result["data"]
         })
     except Exception as e:
@@ -199,19 +208,3 @@ async def submit_case(
             "status": "error",
             "message": f"Błąd podczas zapisywania: {str(e)}"
         }, status_code=500)
-
-# @form_app.get("/cases")
-# async def list_cases():
-#     """List all cases in database - uses file_utils service"""
-#     cases = list_cases_summary()
-#     return {
-#         "cases": cases,
-#         "count": len(cases),
-#         "database_path": JSON_FOLDER_PATH
-#     }
-
-# @form_app.get("/info")
-# async def get_database_info():
-#     """Get database information"""
-#     from core.file_utils import get_database_info
-#     return get_database_info()

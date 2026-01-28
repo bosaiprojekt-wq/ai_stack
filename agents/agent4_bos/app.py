@@ -1,3 +1,4 @@
+# app.py - UPDATED
 from fastapi import FastAPI, Body, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,8 +10,8 @@ from web.forms import form_app
 from web.run_interface import run_app
 from api.support_api import handle_support_request
 from core.file_utils import get_case_count
-from core.config import JSON_FOLDER_PATH
 from core.file_utils import list_cases_summary
+from core.config import COLLECTION_NAME  # ADD THIS IMPORT
 # =========================
 # MAIN APP CONFIGURATION
 # =========================
@@ -52,7 +53,7 @@ async def read_root(request: Request):  # <-- Add request parameter
         "dashboard.html",
         {
             "request": request,
-            "json_folder_path": JSON_FOLDER_PATH,
+            "json_folder_path": f"qdrant://{COLLECTION_NAME}",  # CHANGED
             "case_count": get_case_count()
         }
     )
@@ -69,7 +70,8 @@ async def health_check():
     try:
         db_info = get_database_info()
         case_count = get_case_count()
-        db_ok = db_info["exists"] and db_info["is_dir"]
+        # CHANGED: Check Qdrant instead of JSON folder
+        db_ok = db_info.get("storage") == "qdrant" and case_count >= 0
     except:
         db_ok = False
     
@@ -97,7 +99,8 @@ async def health_check():
             "database": {
                 "healthy": db_ok,
                 "cases": get_case_count() if db_ok else 0,
-                "path": db_info.get("folder_path", "unknown") if db_ok else "unknown"
+                "path": f"qdrant://{COLLECTION_NAME}" if db_ok else "unknown",  # CHANGED
+                "storage": db_info.get("storage", "unknown") if db_ok else "unknown"
             },
             "llm_service": {
                 "healthy": llm_ok,
@@ -124,7 +127,7 @@ async def list_cases():
     return {
         "cases": cases,
         "count": len(cases),
-        "database_path": JSON_FOLDER_PATH
+        "database_path": f"qdrant://{COLLECTION_NAME}"  # CHANGED
     }
 
 @app.get("/info")
@@ -142,7 +145,7 @@ async def test_files():
     db_info = get_database_info()
     
     return {
-        "folder": db_info.get("folder_path", JSON_FOLDER_PATH),
+        "folder": f"qdrant://{COLLECTION_NAME}",  # CHANGED
         "file_count": len(files),
         "database_info": db_info,
         "files": files
@@ -154,7 +157,7 @@ async def test_first_file():
     try:
         return get_first_file()
     except FileNotFoundError:
-        return {"error": "No JSON files found"}
+        return {"error": "No cases found in Qdrant"}  # CHANGED
     
 # =========================
 # STARTUP DEBUG INFO
@@ -165,4 +168,5 @@ print("Agent4 BOS Main Application Initialized...")
 print(f"Form app mounted at: /form")
 print(f"Run page app mounted at: /run_page")
 print(f"Database cases: {get_case_count()}")
+print(f"Storage: Qdrant collection '{COLLECTION_NAME}'")  # ADDED
 print("=" * 60)

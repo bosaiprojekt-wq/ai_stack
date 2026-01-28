@@ -117,7 +117,7 @@
     <div class="api-info">
         <h3>📡 System Information:</h3>
         <ul>
-            <li><strong>JSON Folder:</strong> {{ json_folder_path }}</li>
+            <li><strong>Cases:</strong> {{ json_folder_path }}</li>
             <li><strong>LLM Model:</strong> llama3</li>
             <li><strong>LLM Service:</strong> Ollama</li>
             <li><strong>Cases in DB:</strong> {{ case_count }}</li>
@@ -125,13 +125,13 @@
         
         <h3>📡 Endpointy API:</h3>
         <ul>
-            <li><strong>POST /run</strong> - Generowanie odpowiedzi AI</li>
-            <li><strong>POST /support</strong> - Wyszukiwanie w bazie wiedzy</li>
+            <li><strong>POST /support</strong> - Generowanie odpowiedzi AI</li>
+            <li><strong>GET /run_page</strong> - Interfejs webowy AI</li>
+            <li><strong>GET /cases</strong> - Lista przypadków</li>
             <li><strong>GET /health</strong> - Status serwisu</li>
             <li><strong>GET /form</strong> - Formularz HTML</li>
             <li><strong>POST /form/submit</strong> - Zapis formularza</li>
-            <li><strong>GET /form/cases</strong> - Lista przypadków</li>
-            <li><strong>GET /run_page</strong> - Interfejs webowy AI</li>
+
         </ul>
     </div>
 </body>
