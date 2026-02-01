@@ -1,23 +1,14 @@
+import os
 from fastapi import FastAPI
 from langchain_community.chat_models import ChatOllama
 
-from form.form import get_form_router
-
-# FastAPI app
 app = FastAPI()
+llm = ChatOllama(model="llama3", base_url="http://ollama:11434")
 
-# JEDYNE miejsce inicjalizacji LLM
-llm = ChatOllama(
-    model="llama3",
-    base_url="http://localhost:11434"
-)
+COLLECTION = os.getenv("COLLECTION", "agent4_bos")
 
-COLLECTION = "agent4_bos"
-
-# Routers
-app.include_router(get_form_router())
-
-# Debug – lista endpointów
-print("Registered routes:")
-for r in app.routes:
-    print(r.path)
+@app.post("/run")
+async def run(payload: dict):
+    task = payload.get("input", "")
+    response = llm.invoke(f"Generate draft response or summary for this: {task}")
+    return {"draft": response.content, "collection": COLLECTION}
