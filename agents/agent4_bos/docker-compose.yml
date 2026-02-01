@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   agent4_bos:
     build: .
@@ -7,9 +9,16 @@ services:
     networks:
       - ai_network
     environment:
-      - COLLECTION=agent4_bos
-
+      - COLLECTION=collection_documents
+      - QDRANT_URL=http://qdrant:6333
+      - EMBED_MODEL=nomic-embed-text
+    volumes:
+      - ../../qdrant_data/documents:/qdrant_data/documents
+      - ../../qdrant_data/special_cases:/qdrant_data/special_cases
 networks:
   ai_network:
     external: true
 
+volumes:
+  qdrant_data:
+    external: true

@@ -3,3 +3,7 @@ uvicorn
 langchain
 langchain-community
 qdrant-client
+requests
+pypdf
+python-docx
+python-multipart
