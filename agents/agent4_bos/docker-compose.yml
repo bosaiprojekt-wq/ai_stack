@@ -6,13 +6,9 @@ services:
     container_name: agent4_bos
     ports:
       - "8004:8000"
-    #volumes:
-     # - ./json_folder:/app/json_folder  # Direct mapping to json_folder
     networks:
       - ai_network
     environment:
-      #- COLLECTION=agent4_bos
-      #- JSON_FOLDER_PATH=/app/json_folder  # Set environment variable
       - COLLECTION=agent4_bos_cases
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333

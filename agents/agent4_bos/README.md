@@ -1,4 +1,3 @@
-What does the files do?
 
 agent4_bos/
 ├── app.py                          # Main FastAPI app - mounts sub-apps, defines main endpoints
@@ -69,3 +68,5 @@ dashboard: http://localhost:8004/
 Qdrant: http://localhost:6333/dashboard#/collections
 endpoint docs: http://localhost:8004/docs#/
 Node-RED:http://localhost:1880/ (files for inport in the nodered/Procesy folder)
+
+
