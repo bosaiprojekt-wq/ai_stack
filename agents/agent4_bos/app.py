@@ -8,13 +8,9 @@ import os
 # Import components
 from web.forms import form_app
 from web.run_interface import run_app
-from api.support_api import handle_support_request
-from core.file_utils import get_case_count
-from core.file_utils import list_cases_summary
+from core.qdrant_service import get_case_count, list_cases_summary, get_database_info, list_json_files, get_first_file
 from core.config import COLLECTION_NAME 
-from api.reporting_api import handle_protocol_request
-from web.reporting_interface import protocol_app
-from core.reporting_service import university_service
+from api.api import handle_support_request
 # =========================
 # MAIN APP CONFIGURATION
 # =========================
@@ -44,7 +40,6 @@ app.add_middleware(
 # Mount sub-applications
 app.mount("/form", form_app)
 app.mount("/run_page", run_app)
-app.mount("/reporting_page", protocol_app)
 
 # =========================
 # MAIN APP ROUTES
@@ -66,7 +61,6 @@ async def read_root(request: Request):  # <-- Add request parameter
 async def health_check():
     """Minimal but informative health check"""
     import datetime
-    from core.file_utils import get_database_info, get_case_count
     from core.llm_service import llm_service
     
     # Test database
@@ -124,16 +118,10 @@ async def support(query: str = Body(..., embed=True)):
     return await handle_support_request(query)
 
 
-# protocols reporting endpoint
-@app.post("/protocols")
-async def protocols(query: str = Body(..., embed=True)):
-    """Get information about university protocols, grades, and professors"""
-    return await handle_protocol_request(query)
-
 #all db cases endpoint
 @app.get("/cases")
 async def list_cases():
-    """List all cases in database - uses file_utils service"""
+    """List all cases in database - uses qdrant helpers"""
     cases = list_cases_summary()
     return {
         "cases": cases,
@@ -141,61 +129,13 @@ async def list_cases():
         "database_path": f"qdrant://{COLLECTION_NAME}" 
     }
 
-@app.get("/protocols_list")
-async def list_protocols(status: str = None):
-    """List all protocols in database"""
-    protocols = university_service.get_protocols(status=status)
-    
-    # Format protocols for display
-    formatted_protocols = []
-    for protocol in protocols:
-        formatted_protocols.append({
-            "protocol_id": protocol.get("protocol_id"),
-            "group_id": protocol.get("group_id"),
-            "status": protocol.get("status"),
-            "semester": protocol.get("semester"),
-            "deadline": protocol.get("deadline"),
-            "professor_id": protocol.get("professor_id"),
-            "created_at": protocol.get("created_at"),
-            "closed_at": protocol.get("closed_at")
-        })
-    
-    return {
-        "protocols": formatted_protocols,
-        "count": len(protocols),
-        "status_filter": status,
-        "database_path": f"qdrant://university_protocols"
-    }
-
 #db info endpoint
 @app.get("/info")
-async def get_database_info():
+async def get_database_info_endpoint():
     """Get database information"""
-    from core.file_utils import get_database_info
     return get_database_info()
 
-#files testing endpoints
-@app.get("/test/files")
-async def test_files():
-    """Test endpoint to list JSON files"""
-    from core.file_utils import list_json_files, get_database_info
-    files = list_json_files()
-    db_info = get_database_info()
-    
-    return {
-        "folder": f"qdrant://{COLLECTION_NAME}",  # CHANGED
-        "file_count": len(files),
-        "database_info": db_info,
-        "files": files
-    }
-@app.get("/test/first-file")
-async def test_first_file():
-    """Test endpoint to read first JSON file"""
-    from core.file_utils import get_first_file
-    try:
-        return get_first_file()
-    except FileNotFoundError:
-        return {"error": "No cases found in Qdrant"}  # CHANGED
+# Note: Test endpoints (/test/files and /test/first-file) removed
     
 # =========================
 # STARTUP DEBUG INFO

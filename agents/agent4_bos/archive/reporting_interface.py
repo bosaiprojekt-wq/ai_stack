@@ -27,9 +27,7 @@ async def get_protocol_page(request: Request):
     """Serve the protocol monitoring HTML page"""
     return templates.TemplateResponse("reporting_page.html", {"request": request})
 
-@protocol_app.get("/test")
-async def test_endpoint():
-    """Test endpoint"""
+# Note: Test endpoint removed from protocol_app
     import datetime
     return {
         "status": "ok",

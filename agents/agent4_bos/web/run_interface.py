@@ -26,9 +26,7 @@ async def get_run_page(request: Request):
     """Serve the AI response generation HTML page"""
     return templates.TemplateResponse("run_page.html", {"request": request})
 
-@run_app.get("/test")
-async def test_endpoint():
-    """Test endpoint"""
+# Note: Test endpoint removed from run_app
     import datetime
     return {
         "status": "ok",
