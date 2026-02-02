@@ -3,7 +3,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 # Import from core modules
-from core.file_utils import save_case
+from core.qdrant_service import save_case
 from core.config import COLLECTION_NAME
 
 # Create sub-app

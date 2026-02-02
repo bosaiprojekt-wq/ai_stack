@@ -1,7 +1,7 @@
 import json
 from typing import Dict, Any
 from .llm_service import llm_service  # Import from pure service
-from .file_utils import load_all_cases
+from .qdrant_service import load_all_cases
 
 def build_support_prompt(query: str) -> str:
     cases = load_all_cases()

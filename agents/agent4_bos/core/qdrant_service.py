@@ -23,9 +23,33 @@ class QdrantService:
                     vectors_config=VectorParams(size=384, distance=Distance.COSINE)
                 )
                 print(f"Created collection: {self.collection_name}")
+            else:
+                # Check if collection needs to be recreated
+                collection_info = self.client.get_collection(self.collection_name)
+                # If it has named vectors, recreate it
+                vectors_config = collection_info.config.params.vectors
+                if hasattr(vectors_config, 'vector'):  # Named vectors detected
+                    print(f"Recreating collection {self.collection_name} with plain vectors...")
+                    self.client.delete_collection(collection_name=self.collection_name)
+                    self.client.create_collection(
+                        collection_name=self.collection_name,
+                        vectors_config=VectorParams(size=384, distance=Distance.COSINE)
+                    )
+                    print(f"Recreated collection: {self.collection_name}")
+                    
         except Exception as e:
             print(f"Error ensuring collection: {e}")
-            pass
+            # If collection exists with wrong config, try to recreate
+            try:
+                self.client.delete_collection(collection_name=self.collection_name)
+                self.client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=VectorParams(size=384, distance=Distance.COSINE)
+                )
+                print(f"Recreated collection after error: {self.collection_name}")
+            except Exception as e2:
+                print(f"Failed to recreate collection: {e2}")
+                pass
     
     def save_case(self, case_data: Dict[str, Any], point_id: Optional[str] = None) -> str:
         """Save a case to Qdrant"""
@@ -105,6 +129,107 @@ class QdrantService:
             return True
         except:
             return False
+
+# --- Module-level helper functions (migrated from file_utils.py) ---
+
+def load_all_cases() -> List[Dict[str, Any]]:
+    """Load all cases from Qdrant (compat wrapper)."""
+    return qdrant_service.get_all_cases()
+
+
+def save_case(title: str, author: str, description: str, solution: str, notes: str = "") -> Dict[str, Any]:
+    """Save a new case to Qdrant (compat wrapper moved from file_utils)."""
+    import datetime
+    # Generate human-readable case_id
+    case_id = f"SP-{int(datetime.datetime.now().timestamp())}"
+
+    data = {
+        "case_id": case_id,
+        "title": title,
+        "author": author,
+        "description": description,
+        "solution": solution,
+        "additional_notes": notes,
+        "created_at": datetime.datetime.now().isoformat()
+    }
+
+    try:
+        saved_case_id = qdrant_service.save_case(data)
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": "Failed to save case to Qdrant",
+            "details": str(e)
+        }
+
+    return {
+        "status": "success",
+        "case_id": saved_case_id,
+        "data": data,
+        "storage": "qdrant"
+    }
+
+
+def list_cases_summary() -> List[Dict[str, Any]]:
+    """List all cases with summary info (compat wrapper)."""
+    cases = []
+    for case in qdrant_service.get_all_cases():
+        cases.append({
+            "case_id": case.get("case_id"),
+            "title": case.get("title"),
+            "author": case.get("author"),
+            "created_at": case.get("created_at")
+        })
+    return cases
+
+
+def get_case_count() -> int:
+    """Get number of cases in database (compat wrapper)."""
+    return qdrant_service.get_case_count()
+
+
+def get_database_info() -> Dict[str, Any]:
+    """Get database information (compat wrapper)."""
+    from .config import QDRANT_HOST, QDRANT_PORT, COLLECTION_NAME
+
+    return {
+        "storage": "qdrant",
+        "collection": COLLECTION_NAME,
+        "case_count": get_case_count(),
+        "qdrant_host": QDRANT_HOST,
+        "qdrant_port": QDRANT_PORT,
+        "note": "JSON folder is ignored, using Qdrant only"
+    }
+
+
+def list_json_files() -> List[Dict[str, Any]]:
+    """For compatibility - returns Qdrant cases as 'files'"""
+    import datetime
+    cases = []
+    for case in qdrant_service.get_all_cases():
+        case_id = case.get('case_id', 'unknown')
+        cases.append({
+            "filename": f"{case_id}.json",
+            "size": len(str(case).encode('utf-8')),
+            "modified": datetime.datetime.now().timestamp(),
+            "path": f"qdrant://{qdrant_service.collection_name}/{case_id}",
+            "storage": "qdrant"
+        })
+    return cases
+
+
+def get_first_file() -> Dict[str, Any]:
+    """For compatibility - returns first Qdrant case"""
+    cases = qdrant_service.get_all_cases()
+    if not cases:
+        raise FileNotFoundError("No cases found in Qdrant")
+    first_case = cases[0]
+    return {
+        "filename": f"{first_case.get('case_id', 'unknown')}.json",
+        "content": first_case,
+        "storage": "qdrant"
+    }
+
 
 # Singleton instance
 qdrant_service = QdrantService()
