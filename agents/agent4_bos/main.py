@@ -1,7 +1,10 @@
 import uvicorn
 from app import app
+import threading
+import time
 import os
 
+# Run the full ingestion pipeline once at startup (knowledge base + special cases)
 def run_startup_ingestion():
     """Run ingestion of both knowledge base and special cases on startup"""
     try:
@@ -67,6 +70,7 @@ def run_startup_ingestion():
         import traceback
         traceback.print_exc()
 
+# Start a background thread that watches folders and triggers auto-ingestion
 def start_background_watcher():
     """Start file watcher for auto-ingestion of new files"""
     try:

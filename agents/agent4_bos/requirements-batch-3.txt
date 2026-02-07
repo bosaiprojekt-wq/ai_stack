@@ -1,4 +1,3 @@
-# requirements-batch-3.txt - CORRECT
 langchain==0.1.11
 # langchain-core and langchain-community are already dependencies of langchain
 # No need to install them separately

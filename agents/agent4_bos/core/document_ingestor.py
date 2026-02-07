@@ -1,8 +1,9 @@
-# core/document_ingestor.py - COMPLETE VERSION
 import os
 import time
 from pathlib import Path
 from typing import List, Dict, Any
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 from .config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH
 from .document_processor import document_processor
@@ -163,6 +164,7 @@ class FileWatcher(FileSystemEventHandler):
             print(f"   ✗ Auto-ingestion failed: {e}")
 
 def start_file_watcher():
+    # Launch a filesystem observer to auto-ingest new or changed documents
     """Start watching folders for changes"""
     ingestor = DocumentIngestor()
     event_handler = FileWatcher(ingestor)

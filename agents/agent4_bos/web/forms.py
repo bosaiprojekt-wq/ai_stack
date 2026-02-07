@@ -13,6 +13,7 @@ from core.qdrant_service import save_case as save_case_to_qdrant
 form_app = FastAPI(title="Form Application", description="HTML form for adding cases")
 
 def save_form_as_docx_and_qdrant(title: str, author: str, description: str, solution: str, notes: str = "") -> dict:
+    # Save the submitted form as a DOCX file and immediately persist to Qdrant
     """Save form response as DOCX file AND directly to Qdrant"""
     try:
         # Create directory if it doesn't exist
@@ -96,6 +97,7 @@ def save_form_as_docx_and_qdrant(title: str, author: str, description: str, solu
         }
 
 def extract_text_from_docx_for_debug(filepath: str) -> str:
+    # Return plain text extracted from a DOCX file for debugging/preview
     """Extract text from DOCX for debugging purposes"""
     try:
         doc = Document(filepath)

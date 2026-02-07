@@ -19,6 +19,7 @@ SPECIAL_CASES_PATH = os.path.join(BASE_DATA_PATH, "special_cases")
 # Create directories on import
 def ensure_directories():
     """Create necessary directories if they don't exist"""
+    # Ensure local data folders exist for ingestion and special cases
     directories = [KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH]
     
     for directory in directories:

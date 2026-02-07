@@ -1,4 +1,3 @@
-# app.py - UPDATED
 from fastapi import FastAPI, Body, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,6 +45,7 @@ app.mount("/run_page", run_app)
 # =========================
 
 @app.get("/", response_class=HTMLResponse)
+# Render the main dashboard page with links and case count
 async def read_root(request: Request):  # <-- Add request parameter
     """Main landing page with links to all services"""
     return templates.TemplateResponse(
@@ -58,6 +58,7 @@ async def read_root(request: Request):  # <-- Add request parameter
     )
 
 @app.get("/health")
+# Perform health checks for DB and LLM service and return status
 async def health_check():
     """Minimal but informative health check"""
     import datetime
@@ -113,6 +114,7 @@ async def health_check():
     }
 #main agent endpoint
 @app.post("/support")
+# Handle support search requests and return similar cases/results
 async def support(query: str = Body(..., embed=True)):
     """Search for similar cases in knowledge base - uses API service"""
     return await handle_support_request(query)
@@ -120,6 +122,7 @@ async def support(query: str = Body(..., embed=True)):
 
 #all db cases endpoint
 @app.get("/cases")
+# Return a summary list of cases from the database
 async def list_cases():
     """List all cases in database - uses qdrant helpers"""
     cases = list_cases_summary()
@@ -131,6 +134,7 @@ async def list_cases():
 
 #db info endpoint
 @app.get("/info")
+# Return basic database information and collection counts
 async def get_database_info_endpoint():
     """Get database information"""
     return get_database_info()
@@ -142,18 +146,21 @@ from core.config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH
 # Add after existing imports
 
 @app.post("/ingest/knowledge-base")
+# Trigger ingestion of the knowledge base folder into Qdrant
 async def ingest_knowledge_base(force: bool = False):
     """Ingest all documents from knowledge_base folder"""
     result = document_ingestor.ingest_knowledge_base(force_reingest=force)
     return result
 
 @app.post("/ingest/special-cases")
+# Trigger ingestion of special cases (form responses) into Qdrant
 async def ingest_special_cases(force: bool = False):
     """Ingest all documents from special_cases folder"""
     result = document_ingestor.ingest_special_cases(force_reingest=force)
     return result
 
 @app.post("/ingest/all")
+# Run ingestion for both knowledge base and special cases sequentially
 async def ingest_all(force: bool = False):
     """Ingest all documents from both folders"""
     kb_result = document_ingestor.ingest_knowledge_base(force_reingest=force)
@@ -165,12 +172,14 @@ async def ingest_all(force: bool = False):
     }
 
 @app.get("/collections/info")
+# Return detailed information about all Qdrant collections
 async def get_collections_info():
     """Get information about all collections"""
     from core.qdrant_service import qdrant_service
     return qdrant_service.get_database_info()
 
 @app.get("/files/paths")
+# Return configured file paths and existence flags
 async def get_file_paths():
     """Get configured file paths"""
     return {

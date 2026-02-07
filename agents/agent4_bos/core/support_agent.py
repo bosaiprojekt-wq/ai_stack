@@ -2,6 +2,7 @@ import json
 from typing import Dict, Any, List
 from .qdrant_service import qdrant_service, load_all_cases
 from .config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH, KNOWLEDGE_BASE_CATEGORIES, ALL_CATEGORIES_KEY
+from .llm_service import llm_service
 
 def classify_query_category(query: str) -> str:
     """

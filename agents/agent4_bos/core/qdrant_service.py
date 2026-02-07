@@ -16,6 +16,7 @@ class QdrantService:
         #self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
         self.embedder = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
         # self.embedder = SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
+
         # Collections
         self.collections = {
             "special_cases": SPECIAL_CASES_COLLECTION,
@@ -455,10 +456,12 @@ class QdrantService:
 # Singleton instance
 qdrant_service = QdrantService()
 
-# Compatibility functions (keep for backward compatibility)
+
+# Compatibility wrapper: return all cases via the Qdrant service
 def load_all_cases() -> List[Dict[str, Any]]:
     return qdrant_service.get_all_cases()
 
+# Compatibility wrapper: save a special case via the Qdrant service
 def save_case(title: str, author: str, description: str, solution: str, notes: str = "") -> Dict[str, Any]:
     import datetime
     
@@ -490,6 +493,7 @@ def save_case(title: str, author: str, description: str, solution: str, notes: s
             "details": str(e)
         }
 
+# Return a lightweight summary list for each saved case
 def list_cases_summary() -> List[Dict[str, Any]]:
     cases = []
     for case in qdrant_service.get_all_cases():
@@ -501,25 +505,10 @@ def list_cases_summary() -> List[Dict[str, Any]]:
         })
     return cases
 
+# Return total number of cases in the special_cases collection
 def get_case_count() -> int:
     return qdrant_service.get_case_count()
 
+# Return database/collection metadata and host info
 def get_database_info() -> Dict[str, Any]:
     return qdrant_service.get_database_info()
-
-# Remove or update these functions as they're no longer needed for JSON files
-def list_json_files() -> List[Dict[str, Any]]:
-    """For compatibility - returns empty list"""
-    return []
-
-def get_first_file() -> Dict[str, Any]:
-    """For compatibility - returns first case"""
-    cases = qdrant_service.get_all_cases()
-    if not cases:
-        raise FileNotFoundError("No cases found in Qdrant")
-    first_case = cases[0]
-    return {
-        "filename": f"{first_case.get('case_id', 'unknown')}.json",
-        "content": first_case,
-        "storage": "qdrant"
-    }

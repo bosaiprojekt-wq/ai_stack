@@ -22,14 +22,8 @@ run_app.add_middleware(
 )
 
 @run_app.get("/")
+# Serve the AI interface HTML page for generating responses
 async def get_run_page(request: Request):
     """Serve the AI response generation HTML page"""
     return templates.TemplateResponse("run_page.html", {"request": request})
 
-# Note: Test endpoint removed from run_app
-    import datetime
-    return {
-        "status": "ok",
-        "message": "Run page app is working",
-        "timestamp": datetime.datetime.now().isoformat()
-    }

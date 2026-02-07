@@ -3,7 +3,7 @@ from fastapi import Body
 from core.support_agent import search_similar_case
 from core.qdrant_service import load_all_cases, get_case_count
 
-# Support endpoint handler (merged)
+# API wrapper: handle incoming support queries and dispatch to core agent
 async def handle_support_request(query: str) -> dict:
     query = query.strip()
     if not query:
