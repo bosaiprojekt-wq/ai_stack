@@ -1,0 +1,10 @@
+# PyTorch (CPU-only version)
+torch==2.1.0
+--index-url https://download.pytorch.org/whl/cpu
+
+# Hugging Face ecosystem
+transformers==4.35.2
+huggingface-hub==0.22.2  # Explicit version to prevent conflicts
+
+# Sentence transformers - LATEST COMPATIBLE VERSION
+sentence-transformers==2.5.0

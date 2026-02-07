@@ -1,5 +1,5 @@
 # api/api.py
-from fastapi import HTTPException, Body
+from fastapi import Body
 from core.support_agent import search_similar_case
 from core.qdrant_service import load_all_cases, get_case_count
 

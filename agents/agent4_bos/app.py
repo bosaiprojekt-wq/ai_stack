@@ -8,7 +8,7 @@ import os
 # Import components
 from web.forms import form_app
 from web.run_interface import run_app
-from core.qdrant_service import get_case_count, list_cases_summary, get_database_info, list_json_files, get_first_file
+from core.qdrant_service import get_case_count, list_cases_summary, get_database_info
 from core.config import COLLECTION_NAME 
 from api.api import handle_support_request
 # =========================
@@ -135,7 +135,52 @@ async def get_database_info_endpoint():
     """Get database information"""
     return get_database_info()
 
-# Note: Test endpoints (/test/files and /test/first-file) removed
+# app.py - ADD THESE NEW ENDPOINTS
+from core.document_ingestor import document_ingestor
+from core.config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH
+
+# Add after existing imports
+
+@app.post("/ingest/knowledge-base")
+async def ingest_knowledge_base(force: bool = False):
+    """Ingest all documents from knowledge_base folder"""
+    result = document_ingestor.ingest_knowledge_base(force_reingest=force)
+    return result
+
+@app.post("/ingest/special-cases")
+async def ingest_special_cases(force: bool = False):
+    """Ingest all documents from special_cases folder"""
+    result = document_ingestor.ingest_special_cases(force_reingest=force)
+    return result
+
+@app.post("/ingest/all")
+async def ingest_all(force: bool = False):
+    """Ingest all documents from both folders"""
+    kb_result = document_ingestor.ingest_knowledge_base(force_reingest=force)
+    sc_result = document_ingestor.ingest_special_cases(force_reingest=force)
+    
+    return {
+        "knowledge_base": kb_result,
+        "special_cases": sc_result
+    }
+
+@app.get("/collections/info")
+async def get_collections_info():
+    """Get information about all collections"""
+    from core.qdrant_service import qdrant_service
+    return qdrant_service.get_database_info()
+
+@app.get("/files/paths")
+async def get_file_paths():
+    """Get configured file paths"""
+    return {
+        "knowledge_base_path": KNOWLEDGE_BASE_PATH,
+        "special_cases_path": SPECIAL_CASES_PATH,
+        "exists": {
+            "knowledge_base": os.path.exists(KNOWLEDGE_BASE_PATH),
+            "special_cases": os.path.exists(SPECIAL_CASES_PATH)
+        }
+    }
     
 # =========================
 # STARTUP DEBUG INFO

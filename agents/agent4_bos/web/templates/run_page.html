@@ -1,670 +1,547 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Agent4 BOS - Generowanie odpowiedzi AI</title>
+    <title>Agent4 BOS - Chatbot AI</title>
     <style>
         * {
             box-sizing: border-box;
         }
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            max-width: 1000px; 
-            margin: 0 auto; 
-            padding: 20px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-        }
-        .container { 
-            background: white;
-            border-radius: 12px; 
-            padding: 30px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        h1 { 
-            color: #2c3e50; 
-            text-align: center; 
-            margin-bottom: 30px;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            border-radius: 8px;
-            background: #f8f9fa;
-        }
-        label { 
-            display: block; 
-            margin-top: 15px; 
-            font-weight: 600; 
-            color: #34495e;
-        }
-        textarea, input[type="text"] { 
-            width: 100%; 
-            padding: 12px; 
-            margin-top: 8px; 
-            border: 2px solid #ddd; 
-            border-radius: 6px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        textarea:focus, input[type="text"]:focus {
-            border-color: #3498db;
-            outline: none;
-        }
-        textarea { 
-            height: 180px; 
-            resize: vertical; 
-            font-family: monospace;
-        }
-        .btn-container {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        .btn { 
-            padding: 14px 28px; 
-            border: none; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            font-size: 16px;
-            font-weight: 600;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex: 1;
-            min-width: 200px;
-        }
-        .btn:hover { 
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        .btn-success { 
-            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-            color: white; 
-        }
-        .btn-danger { 
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-            color: white; 
-        }
-        .btn-info { 
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            color: white; 
-        }
-        .message {
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 6px;
-            display: none;
-            animation: slideIn 0.3s ease;
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .success { 
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            color: #155724; 
-            border-left: 4px solid #28a745;
-        }
-        .error { 
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-            color: #721c24; 
-            border-left: 4px solid #dc3545;
-        }
-        .info { 
-            background: linear-gradient(135deg, #e8f4fd 0%, #d1ecf1 100%);
-            color: #004085; 
-            border-left: 4px solid #3498db;
-        }
-        
-        /* Modal/Response Window */
-        .response-window {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 800px;
-            max-height: 80vh;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            z-index: 1000;
-            overflow: hidden;
-            animation: modalFadeIn 0.3s ease;
-        }
-        @keyframes modalFadeIn {
-            from { opacity: 0; transform: translate(-50%, -60%); }
-            to { opacity: 1; transform: translate(-50%, -50%); }
-        }
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 999;
-        }
-        .modal-header {
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .modal-header h2 {
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .modal-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 28px;
-            cursor: pointer;
+            margin: 0; 
             padding: 0;
-            width: 30px;
-            height: 30px;
+            background: #e9ecef;
+            height: 100vh;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: background 0.3s;
-        }
-        .modal-close:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        .modal-content {
-            padding: 25px;
-            max-height: 60vh;
-            overflow-y: auto;
-        }
-        .response-text {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
-            white-space: pre-wrap;
-            line-height: 1.6;
-            font-family: 'Courier New', monospace;
-            margin-bottom: 20px;
-        }
-        .response-meta {
-            background: #e8f4fd;
-            padding: 15px;
-            border-radius: 6px;
-            border: 1px solid #b8daff;
-            font-size: 14px;
-        }
-        .response-meta div {
-            margin: 5px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .response-meta i {
-            width: 20px;
-            text-align: center;
-        }
-        
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 40px;
-            background: rgba(255,255,255,0.95);
-            border-radius: 12px;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1001;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-        .loading-spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            flex-direction: column;
+            overflow: hidden; /* Zapobiega podwójnym paskom przewijania */
         }
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-        .stat-item {
+        /* --- UI STRUKTURA --- */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+            /* Domyślny tryb "skupiony" */
+            max-width: 1000px;
+            margin: 0 auto;
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            border: 1px solid #e0e0e0;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            position: relative;
+            transition: max-width 0.3s ease, margin 0.3s ease, box-shadow 0.3s ease;
         }
-        .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 5px;
+
+        /* --- NOWY STYL: TRYB PEŁNOEKRANOWY --- */
+        .main-container.full-width {
+            max-width: 100%;
+            margin: 0;
+            box-shadow: none;
+            border: none;
         }
-        .stat-label {
-            font-size: 14px;
-            color: #7f8c8d;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .nav-links {
+
+        /* HEADER */
+        .chat-header {
+            padding: 15px 25px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
             display: flex;
             justify-content: space-between;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
+            align-items: center;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-shrink: 0; /* Header nie może się kurczyć */
         }
-        .nav-links a {
-            color: #3498db;
-            text-decoration: none;
-            font-weight: 600;
+        .header-title h1 {
+            margin: 0;
+            font-size: 1.2rem;
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 10px 20px;
-            border-radius: 6px;
-            transition: all 0.3s;
         }
-        .nav-links a:hover {
-            background: #f0f7ff;
-            transform: translateX(5px);
+        .header-status {
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #2ecc71;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Przyciski w nagłówku */
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            cursor: pointer;
+            margin-left: 8px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .header-btn:hover {
+            background: rgba(255,255,255,0.4);
+        }
+
+        /* CHAT AREA */
+        #chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f7fa;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            scroll-behavior: smooth;
+        }
+
+        /* WIADOMOŚCI */
+        .msg {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.5;
+            position: relative;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease;
+            transition: all 0.2s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .msg.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg.bot {
+            align-self: flex-start;
+            background: white;
+            color: #2c3e50;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+            white-space: pre-wrap;
+            padding-bottom: 30px;
+        }
+
+        .msg.system {
+            align-self: center;
+            background: transparent;
+            color: #7f8c8d;
+            font-size: 0.8rem;
+            border: none;
+            padding: 5px;
+        }
+
+        /* AKCJE WIADOMOŚCI */
+        .msg-actions {
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        .msg.bot:hover .msg-actions {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .msg-actions {
+                opacity: 0.6;
+            }
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: #95a5a6;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 5px;
+            transition: color 0.2s, transform 0.2s;
+        }
+
+        .action-btn:hover {
+            color: #667eea;
+            transform: scale(1.2);
+        }
+
+        .action-btn.success {
+            color: #2ecc71 !important;
+        }
+
+        /* INPUT AREA */
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            flex-shrink: 0; /* Input nie może się kurczyć */
+        }
+
+        #runForm {
+            display: flex;
+            gap: 10px;
+            position: relative;
+        }
+
+        textarea#inputField {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 24px;
+            resize: none;
+            height: 50px;
+            font-family: inherit;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.3s;
+            overflow: hidden;
+        }
+        
+        textarea#inputField:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* LOADING */
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            background: white;
+            padding: 15px;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 10px;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #bbb;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .msg-meta {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-top: 5px;
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 5px; 
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+            flex-shrink: 0;
+        }
+        
+        .toolbar a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 15px;
         }
     </style>
-    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <h1><i class="fas fa-robot"></i> Agent4 BOS - Generowanie odpowiedzi AI</h1>
-        
-        <div class="section">
-            <div class="model-info">
-                <h3><i class="fas fa-info-circle"></i> Informacje o modelu</h3>
-                <div class="stats">
-                    <div class="stat-item">
-                        <div class="stat-value">Llama 3</div>
-                        <div class="stat-label">Model AI</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">/run</div>
-                        <div class="stat-label">Endpoint</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">GPT-4</div>
-                        <div class="stat-label">Jakość</div>
-                    </div>
-                </div>
+
+    <div class="main-container" id="mainContainer">
+        <div class="chat-header">
+            <div class="header-title">
+                <h1><i class="fas fa-robot"></i> Agent4 BOS</h1>
+            </div>
+            <div class="header-status">
+                <span class="status-dot"></span> Online | Llama 3
+                
+                <button class="header-btn" onclick="toggleLayout()" title="Przełącz pełny ekran">
+                    <i class="fas fa-expand" id="resizeIcon"></i>
+                </button>
+
+                <button class="header-btn" onclick="clearChat()" title="Wyczyść czat">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         </div>
-        
-        <div class="section">
-            <h3><i class="fas fa-edit"></i> Wprowadź zapytanie</h3>
-            
-            <div id="message" class="message"></div>
-            
+
+        <div id="chat-history">
+        </div>
+
+        <div id="loading" class="typing-indicator">
+            <div class="typing-dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
             <form id="runForm">
-                <label for="inputField"><i class="fas fa-keyboard"></i></label>
-                <textarea id="inputField" name="input"required></textarea>
-                
-                <div class="btn-container">
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-rocket"></i> Generuj odpowiedź
-                    </button>
-                    <button type="button" onclick="clearForm()" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Wyczyść formularz
-                    </button>
-                    <button type="button" onclick="testConnection()" class="btn btn-info">
-                        <i class="fas fa-wifi"></i> Test połączenia
-                    </button>
-                </div>
+                <textarea id="inputField" name="input" placeholder="Wpisz wiadomość..." required rows="1"></textarea>
+                <button type="submit" class="send-btn" id="sendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </form>
         </div>
-        
-        <div class="nav-links">
-            <a href="/">
-                <i class="fas fa-arrow-left"></i> Powrót do głównej strony
-            </a>
-            <a href="/form">
-                <i class="fas fa-file-alt"></i> Formularz przypadków
-            </a>
-            <a href="/docs" target="_blank">
-                <i class="fas fa-book"></i> Dokumentacja API
-            </a>
-        </div>
-    </div>
-    
-    <!-- Loading Overlay -->
-    <div class="loading" id="loading">
-        <div class="loading-spinner"></div>
-        <h3>Generowanie odpowiedzi...</h3>
-        <p>AI przetwarza Twoje zapytanie. To może zająć kilka sekund.</p>
-        <div id="loadingProgress"></div>
-    </div>
-    
-    <!-- Modal Overlay -->
-    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
-    
-    <!-- Response Window Modal -->
-    <div class="response-window" id="responseWindow">
-        <div class="modal-header">
-            <h2><i class="fas fa-robot"></i> Wygenerowana odpowiedź</h2>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
-        </div>
-        <div class="modal-content">
-            <div class="response-text" id="responseContent">
-                Tutaj pojawi się wygenerowana odpowiedź...
+
+        <div class="toolbar">
+            <div class="stats-mini">
+                <span id="responseTimer">Gotowy</span>
             </div>
-            
-            <div class="response-meta" id="responseMeta">
-                <div><i class="fas fa-cogs"></i> <strong>Model:</strong> <span id="modelName">ładowanie...</span></div>
-                <div><i class="fas fa-clock"></i> <strong>Czas:</strong> <span id="responseTime">0.0s</span></div>
-                <div><i class="fas fa-database"></i> <strong>Kolekcja:</strong> <span id="collectionName">agent4_bos</span></div>
-                <div><i class="fas fa-calendar"></i> <strong>Data:</strong> <span id="responseDate">-</span></div>
-            </div>
-            
-            <div class="btn-container" style="margin-top: 20px;">
-                <button onclick="copyToClipboard()" class="btn btn-success">
-                    <i class="fas fa-copy"></i> Kopiuj odpowiedź
-                </button>
-                <button onclick="downloadResponse()" class="btn btn-info">
-                    <i class="fas fa-download"></i> Pobierz jako TXT
-                </button>
-                <button onclick="closeModal()" class="btn btn-danger">
-                    <i class="fas fa-times"></i> Zamknij
-                </button>
+            <div class="nav-mini">
+                <a href="/"><i class="fas fa-home"></i> Home</a>
+                <a href="/form"><i class="fas fa-file-alt"></i> Form</a>
             </div>
         </div>
     </div>
-    
-    <!-- Stats Section -->
-    <div class="section" id="statsSection" style="display: none;">
-        <h3><i class="fas fa-chart-bar"></i> Statystyki odpowiedzi</h3>
-        <div class="stats" id="stats">
-            <div class="stat-item">
-                <div class="stat-value" id="totalResponses">0</div>
-                <div class="stat-label">Wygenerowanych odpowiedzi</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value" id="avgResponseTime">0s</div>
-                <div class="stat-label">Średni czas</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value" id="totalCharacters">0</div>
-                <div class="stat-label">Znaków wygenerowano</div>
-            </div>
-        </div>
-    </div>
+
     <script>
+        const chatHistory = document.getElementById('chat-history');
+        const runForm = document.getElementById('runForm');
+        const inputField = document.getElementById('inputField');
+        const loadingIndicator = document.getElementById('loading');
+        const sendBtn = document.getElementById('sendBtn');
+        const responseTimer = document.getElementById('responseTimer');
+        const mainContainer = document.getElementById('mainContainer');
+        const resizeIcon = document.getElementById('resizeIcon');
 
-// Statistics tracking
-let stats = {
-    totalResponses: 0,
-    totalResponseTime: 0,
-    totalCharacters: 0,
-    responses: []
-};
-
-// Load stats from localStorage
-function loadStats() {
-    const saved = localStorage.getItem('aiResponseStats');
-    if (saved) {
-        stats = JSON.parse(saved);
-    }
-    updateStatsDisplay();
-}
-
-// Save stats to localStorage
-function saveStats() {
-    localStorage.setItem('aiResponseStats', JSON.stringify(stats));
-}
-
-
-function clearForm() {
-    document.getElementById('runForm').reset();
-    showMessage('info', 'Formularz wyczyszczony. Możesz wprowadzić nowe zapytanie.');
-}
-
-function showMessage(type, text) {
-    const msgDiv = document.getElementById('message');
-    msgDiv.className = 'message ' + type;
-    msgDiv.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle') + '"></i> ' + text;
-    msgDiv.style.display = 'block';
-    
-    setTimeout(() => {
-        msgDiv.style.display = 'none';
-    }, 5000);
-}
-
-function showLoading() {
-    document.getElementById('loading').style.display = 'block';
-    let dots = 0;
-    const progress = document.getElementById('loadingProgress');
-    
-    const interval = setInterval(() => {
-        dots = (dots + 1) % 4;
-        if (progress) {
-            progress.innerHTML = 'Trwa generowanie' + '.'.repeat(dots);
-        }
-    }, 500);
-    
-    return interval;
-}
-
-function hideLoading(interval) {
-    document.getElementById('loading').style.display = 'none';
-    if (interval) clearInterval(interval);
-}
-
-function showResponseModal(response, responseTime) {
-    // Update response content
-    document.getElementById('responseContent').textContent = response.draft || response.message || 'Brak odpowiedzi';
-    
-    // Update metadata
-    document.getElementById('modelName').textContent = response.model || 'Llama 3';
-    document.getElementById('responseTime').textContent = responseTime + 's';
-    document.getElementById('collectionName').textContent = response.collection || 'agent4_bos';
-    document.getElementById('responseDate').textContent = new Date().toLocaleString('pl-PL');
-    
-    // Show modal and overlay
-    document.getElementById('responseWindow').style.display = 'block';
-    document.getElementById('modalOverlay').style.display = 'block';
-    
-    // Update stats
-    updateStats(response.draft || '', responseTime);
-}
-
-function closeModal() {
-    document.getElementById('responseWindow').style.display = 'none';
-    document.getElementById('modalOverlay').style.display = 'none';
-}
-
-function updateStats(responseText, responseTime) {
-    // Update stats
-    stats.totalResponses++;
-    stats.totalResponseTime += responseTime;
-    stats.totalCharacters += responseText.length;
-    stats.responses.push({
-        time: responseTime,
-        length: responseText.length,
-        timestamp: new Date().toISOString()
-    });
-    
-    // Keep only last 50 responses
-    if (stats.responses.length > 50) {
-        stats.responses = stats.responses.slice(-50);
-    }
-    
-    // Save and display
-    saveStats();
-    updateStatsDisplay();
-    
-    // Show stats section
-    document.getElementById('statsSection').style.display = 'block';
-}
-
-function updateStatsDisplay() {
-    document.getElementById('totalResponses').textContent = stats.totalResponses;
-    
-    const avgTime = stats.totalResponses > 0 
-        ? (stats.totalResponseTime / stats.totalResponses).toFixed(1)
-        : 0;
-    document.getElementById('avgResponseTime').textContent = avgTime + 's';
-    
-    document.getElementById('totalCharacters').textContent = stats.totalCharacters.toLocaleString();
-}
-
-function copyToClipboard() {
-    const responseText = document.getElementById('responseContent').textContent;
-    navigator.clipboard.writeText(responseText).then(() => {
-        showMessage('success', 'Odpowiedź skopiowana do schowka!');
-    }).catch(err => {
-        showMessage('error', 'Błąd kopiowania: ' + err);
-    });
-}
-
-function downloadResponse() {
-    const responseText = document.getElementById('responseContent').textContent;
-    const meta = 'Model: ' + document.getElementById('modelName').textContent + '\\n' +
-                'Czas: ' + document.getElementById('responseTime').textContent + '\\n' +
-                'Data: ' + document.getElementById('responseDate').textContent + '\\n\\n';
-    
-    const blob = new Blob([meta + responseText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ai-response-' + new Date().toISOString().slice(0,10) + '.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showMessage('success', 'Odpowiedź pobrana!');
-}
-
-function testConnection() {
-    fetch('/health')
-        .then(response => response.json())
-        .then(data => {
-            showMessage('success', 'Połączenie OK! Status: ' + data.status);
-        })
-        .catch(error => {
-            showMessage('error', 'Błąd połączenia: ' + error.message);
+        // Wiadomość powitalna
+        window.addEventListener('DOMContentLoaded', () => {
+             appendMessage('Cześć! Jestem Twoim asystentem AI. W czym mogę Ci dzisiaj pomóc?', 'bot', 'Teraz');
         });
-}
 
-// THE KEY FUNCTION - prevents form reload
-document.getElementById('runForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const input = document.getElementById('inputField').value;
-    
-    if (!input.trim()) {
-        showMessage('error', 'Proszę wprowadzić zapytanie do AI');
-        return;
-    }
-    
-    let payload = { 
-        input: input,
-        timestamp: new Date().toISOString()
-    };
-    
-    // Show loading
-    const loadingInterval = showLoading();
-    const startTime = Date.now();
-    
-    try {
-        // Call the API endpoint
-    const response = await fetch('../support', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: input })
-    });
-
-        
-        const endTime = Date.now();
-        const responseTime = ((endTime - startTime) / 1000).toFixed(1);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error('HTTP ' + response.status + ': ' + errorText);
+        // --- NOWA FUNKCJA: Przełączanie układu strony ---
+        function toggleLayout() {
+            mainContainer.classList.toggle('full-width');
+            
+            if (mainContainer.classList.contains('full-width')) {
+                resizeIcon.classList.remove('fa-expand');
+                resizeIcon.classList.add('fa-compress');
+            } else {
+                resizeIcon.classList.remove('fa-compress');
+                resizeIcon.classList.add('fa-expand');
+            }
         }
-        
-        const result = await response.json();
-        
-        // Hide loading
-        hideLoading(loadingInterval);
-        
-        // Show response in modal
-        showResponseModal({
-            draft: result.message || result.response || "Brak odpowiedzi",
-            found: result.found || false,
-            model: "llama3",
-            collection: "agent4_bos"
-        }, responseTime);
+
+        // Automatyczne dopasowanie wysokości pola
+        inputField.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            if(this.value === '') this.style.height = '50px';
+        });
+
+        inputField.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                runForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        function scrollToBottom() {
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function appendMessage(text, sender, meta = null) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `msg ${sender}`;
+            
+            const textContent = document.createTextNode(text);
+            msgDiv.appendChild(textContent);
+
+            if (meta) {
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'msg-meta';
+                metaDiv.innerHTML = meta;
+                msgDiv.appendChild(metaDiv);
+            }
+
+            if (sender === 'bot') {
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'msg-actions';
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'action-btn';
+                copyBtn.title = 'Kopiuj tekst';
+                copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                copyBtn.onclick = () => copyToClipboard(text, copyBtn);
+
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'action-btn';
+                downloadBtn.title = 'Pobierz jako .txt';
+                downloadBtn.innerHTML = '<i class="fas fa-download"></i>';
+                downloadBtn.onclick = () => downloadResponse(text);
+
+                actionsDiv.appendChild(copyBtn);
+                actionsDiv.appendChild(downloadBtn);
+                msgDiv.appendChild(actionsDiv);
+            }
+
+            chatHistory.insertBefore(msgDiv, loadingIndicator.parentNode === chatHistory ? loadingIndicator : null);
+            
+            if(loadingIndicator.parentNode !== chatHistory) {
+                 chatHistory.appendChild(msgDiv);
+            }
+
+            scrollToBottom();
+        }
+
+        async function copyToClipboard(text, btnElement) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalIcon = btnElement.innerHTML;
+                btnElement.innerHTML = '<i class="fas fa-check"></i>';
+                btnElement.classList.add('success');
+                setTimeout(() => {
+                    btnElement.innerHTML = originalIcon;
+                    btnElement.classList.remove('success');
+                }, 2000);
+            } catch (err) {
+                console.error('Błąd kopiowania:', err);
+            }
+        }
+
+        function downloadResponse(text) {
+            const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+            a.href = url;
+            a.download = `response_${timestamp}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function showLoading() {
+            chatHistory.appendChild(loadingIndicator);
+            loadingIndicator.style.display = 'flex';
+            scrollToBottom();
+            inputField.disabled = true;
+            sendBtn.disabled = true;
+            responseTimer.textContent = "Agent pisze...";
+        }
+
+        function hideLoading() {
+            loadingIndicator.style.display = 'none';
+            inputField.disabled = false;
+            sendBtn.disabled = false;
+            inputField.focus();
+        }
+
+        function clearChat() {
+            if(confirm('Czy na pewno chcesz wyczyścić historię czatu?')) {
+                chatHistory.innerHTML = '';
+                chatHistory.appendChild(loadingIndicator);
+                appendMessage('Historia czatu została wyczyszczona.', 'system');
+            }
+        }
+
+        runForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const text = inputField.value.trim();
+            if (!text) return;
+
+            appendMessage(text, 'user', `<i class="fas fa-user"></i> Ty`);
+            inputField.value = '';
+            inputField.style.height = '50px';
+
+            showLoading();
+            const startTime = Date.now();
+
+            try {
+                // Mock request
+                const response = await fetch('../support', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: text })
+                });
+
+                const endTime = Date.now();
+                const duration = ((endTime - startTime) / 1000).toFixed(1);
                 
-        // Clear form after successful response
-        clearForm();
-        
-    } catch (error) {
-        hideLoading(loadingInterval);
-        showMessage('error', 'Błąd: ' + error.message);
-        console.error('API Error:', error);
-    }
-});
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    // Ctrl+Enter to submit
-    if (e.ctrlKey && e.key === 'Enter') {
-        document.getElementById('runForm').dispatchEvent(new Event('submit'));
-        e.preventDefault();
-    }
-    // Escape to close modal
-    if (e.key === 'Escape') {
-        closeModal();
-    }
-});
+                const result = await response.json();
+                hideLoading();
+                
+                const botResponse = result.message || result.response || "Otrzymano pustą odpowiedź.";
+                const metaInfo = `<i class="fas fa-clock"></i> ${duration}s | <i class="fas fa-database"></i> ${result.collection || 'agent4_bos'}`;
+                
+                appendMessage(botResponse, 'bot', metaInfo);
+                responseTimer.textContent = `Ostatnia odp: ${duration}s`;
 
-window.onload = function() {
-    loadStats();
-};
-
-// Close modal when clicking overlay
-document.getElementById('modalOverlay').addEventListener('click', closeModal);
-
-// Prevent modal close when clicking inside modal
-document.getElementById('responseWindow').addEventListener('click', function(e) {
-    e.stopPropagation();
-});
-</script>
+            } catch (error) {
+                hideLoading();
+                const fallbackMeta = `<i class="fas fa-clock"></i> 0.5s | <i class="fas fa-exclamation-triangle"></i> Demo Mode`;
+                appendMessage(`To jest przykładowa odpowiedź. Endpoint API zwrócił błąd lub nie istnieje w tym środowisku demo.\n\nTreść błędu: ${error.message}`, 'bot', fallbackMeta);
+            }
+        });
+    </script>
 </body>
 </html>

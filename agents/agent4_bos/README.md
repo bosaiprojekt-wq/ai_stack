@@ -42,7 +42,7 @@ Endponts:
 
 HOW TO RUN THE PROJECT
 
-run ollama and qdrant containers BEFORE agent container
+run ollama and qdrant containers BEFORE agent
 
 
 each agent change needs those comments to work:
