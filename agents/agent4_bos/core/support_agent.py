@@ -3,6 +3,10 @@ from typing import Dict, Any, List
 from .qdrant_service import qdrant_service, load_all_cases
 from .config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH, KNOWLEDGE_BASE_CATEGORIES, ALL_CATEGORIES_KEY
 from .llm_service import llm_service
+from .document_generator import document_generator 
+
+# GLOBAL CONTEXT to remember the last failed query for generation flow
+LAST_SEARCH_CONTEXT = {"query": None, "category": None}
 
 def classify_query_category(query: str) -> str:
     """
@@ -69,7 +73,7 @@ def search_by_category(query: str, category: str = None) -> List[Dict[str, Any]]
     if not category or category == ALL_CATEGORIES_KEY:
         # No category filter - search all (with reasonable limit)
         print(f"Searching ALL categories for: '{query}'")
-        knowledge_results = qdrant_service.search(query, collection="knowledge_base", limit=100)  # Reasonable limit for all
+        knowledge_results = qdrant_service.search(query, collection="knowledge_base", limit=100)
     else:
         # Search ALL documents in this category
         print(f"Searching ALL documents in category '{category}' for: '{query}'")
@@ -116,97 +120,138 @@ def search_by_category(query: str, category: str = None) -> List[Dict[str, Any]]
     
     print(f"DEBUG: Total formatted results: {len(formatted_results)}")
     
-    # Show category distribution
-    if formatted_results:
-        from collections import Counter
-        category_counts = Counter([r["category"] for r in formatted_results])
-        print(f"DEBUG: Category distribution: {dict(category_counts)}")
-        
-        # Show confidence range
-        confidences = [r["confidence"] for r in formatted_results]
-        if confidences:
-            print(f"DEBUG: Confidence range: {min(confidences)}% - {max(confidences)}%")
-        
-        # Show top 5 results
-        print(f"DEBUG: Top 5 results by relevance:")
-        for i, r in enumerate(formatted_results[:5]):
-            marker = "★" if r["category"] == category else " "
-            print(f"{marker} {i+1}. {r['filename']}")
-            print(f"    Category: {r['category']}, Confidence: {r['confidence']}%")
-            if r['confidence'] > 50:  # Show snippet for decent matches
-                snippet = r['content'][:100]
-                print(f"    Preview: {snippet}...")
-    
-    return formatted_results  # Return ALL results, no limit
+    return formatted_results
+
+
+def detect_generation_intent(query: str) -> bool:
+    """Check if the user explicitly wants to generate a document"""
+    keywords = ["wygeneruj", "stwórz", "napisz", "przygotuj", "sporządź"]
+    query_lower = query.lower()
+    return any(keyword in query_lower for keyword in keywords)
+
 
 def search_similar_case(query: str) -> Dict[str, Any]:
     """
-    Enhanced search with RAG - searches ALL documents in selected category
+    Enhanced search with RAG and Generation Capability
     """
+    global LAST_SEARCH_CONTEXT
+    
     try:
-        # 1. Use LLM to classify query category
+        # 0. Check for explicit generation intent FIRST
+        is_generation = detect_generation_intent(query)
         category = classify_query_category(query)
+        
+        # Handle "Confirmation" of generation (e.g. "Tak, wygeneruj")
+        topic_to_generate = query
+        
+        if is_generation:
+            clean_query = query.lower().strip()
+            # If query is short (e.g. "tak wygeneruj") and we have context, use context
+            if len(clean_query.split()) < 6 and LAST_SEARCH_CONTEXT["query"]:
+                print(f"DEBUG: Detected confirmation for previous topic: {LAST_SEARCH_CONTEXT['query']}")
+                topic_to_generate = LAST_SEARCH_CONTEXT["query"]
+                if LAST_SEARCH_CONTEXT["category"] != ALL_CATEGORIES_KEY:
+                    category = LAST_SEARCH_CONTEXT["category"]
+        
+        if is_generation:
+            print(f"\n=== GENERATION REQUEST DETECTED ===")
+            print(f"Query: {query}")
+            print(f"Topic used for generation: {topic_to_generate}")
+            print(f"Category: {category}")
+            
+            # Generate the document using the proper topic
+            file_info = document_generator.generate_document(topic_to_generate, category)
+            
+            if file_info.get("success"):
+                # POPRAWKA: Dodanie linku i nazwy pliku bezpośrednio do treści wiadomości
+                download_url = file_info.get("download_url", "")
+                filename = file_info.get("name", "dokument.docx")
+                
+                response_msg = (
+                    f"Zgodnie z Twoją prośbą wygenerowałem dokument na temat: '{topic_to_generate}'.\n"
+                    f"Został on zapisany w kategorii '{category}'.\n\n"
+                    f"📄 **Nazwa pliku:** {filename}\n"
+                    f"🔗 **Link do pobrania:** {download_url}"
+                )
+                
+                # Clear context after successful generation
+                LAST_SEARCH_CONTEXT = {"query": None, "category": None}
+                
+                return {
+                    "found": True,
+                    "generated_file": file_info,
+                    "message": response_msg,
+                    "query": query,
+                    "category": category,
+                    "response_type": "generated_document"
+                }
+            else:
+                return {
+                    "found": False,
+                    "message": f"Wystąpił błąd podczas generowania dokumentu: {file_info.get('error')}",
+                    "query": query
+                }
+
+        # 1. Standard RAG Search
         print(f"\n=== RAG SEARCH ===")
         print(f"Query: '{query}'")
         print(f"LLM Category: {category}")
         
-        # DEBUG: Check what's in this category
-        print(f"\n=== DEBUG: Checking category '{category}' ===")
-        qdrant_service.debug_category_search(category)
-        
-        # 2. Search ALL documents in this category (no limit)
+        # 2. Search ALL documents in this category
         search_results = search_by_category(query, category=category)
         
-        # 3. If no results in target category, try all categories
-        target_category_results = [r for r in search_results if r["category"] == category]
-        if not target_category_results and category != ALL_CATEGORIES_KEY:
-            print(f"\nNo results in category '{category}', trying ALL categories...")
-            search_results = search_by_category(query, category=ALL_CATEGORIES_KEY)
+        # 3. Filter low confidence results (<20%)
+        filtered_results = [r for r in search_results if r.get("confidence", 0) >= 20]
         
-        # 4. Build prompt with ALL found results
-        prompt = build_enhanced_prompt(query, search_results, category)
+        # NEW LOGIC: Handling "Not Found" with generation proposal
+        # Check if we have any high confidence matches (>45%)
+        high_confidence_matches = [r for r in filtered_results if r.get("confidence", 0) >= 45]
+        
+        if not high_confidence_matches:
+            print(f"No high confidence results found. Proposing generation.")
+            
+            # SAVE CONTEXT for potential generation next turn
+            LAST_SEARCH_CONTEXT["query"] = query
+            LAST_SEARCH_CONTEXT["category"] = category
+            
+            # Use LLM to formulate a polite refusal with suggestion
+            prompt = f"""Użytkownik pyta o: "{query}".
+Przeszukałeś bazę wiedzy i nie znalazłeś satysfakcjonujących dokumentów (wyniki są słabe).
+Twoim zadaniem jest:
+1. Poinformować użytkownika, że nie znalazłeś takiego dokumentu w obecnej bazie.
+2. Zapytać użytkownika, czy chce, abyś wygenerował (stworzył) ten dokument teraz.
+3. Poinstruować go, że jeśli się zgadza, wystarczy że napisze: "Tak, wygeneruj".
+
+Odpowiedz krótko i konkretnie w języku polskim."""
+            
+            suggestion_response = llm_service.generate_response(prompt, temperature=0.3)
+            
+            return {
+                "found": False,
+                "message": suggestion_response,
+                "query": query,
+                "category": category,
+                "total_results": len(filtered_results),
+                "response_type": "not_found_suggestion"
+            }
+        
+        # If we have good results, proceed with standard RAG response
+        print(f"Results after confidence filter: {len(filtered_results)}/{len(search_results)}")
+        
+        # 4. Build prompt
+        prompt = build_enhanced_prompt(query, filtered_results, category)
         
         # 5. Generate response
         response = llm_service.generate_response(prompt)
         
         # 6. Parse response
-        result = parse_rag_response(response, search_results)
+        result = parse_rag_response(response, filtered_results)
         
         # Add metadata
         result["query"] = query
         result["category"] = category
-        result["total_results"] = len(search_results)
-        result["target_category_results"] = len([r for r in search_results if r["category"] == category])
-        
-        # Detailed summary
-        print(f"\n=== FINAL SEARCH SUMMARY ===")
-        print(f"Query: '{query}'")
-        print(f"Selected category: {category}")
-        print(f"Total documents retrieved: {len(search_results)}")
-        print(f"Documents in target category: {result['target_category_results']}")
-        
-        if search_results:
-            # Group by category
-            from collections import Counter
-            cat_counts = Counter([r["category"] for r in search_results])
-            print(f"\nCategory breakdown:")
-            for cat, count in cat_counts.items():
-                marker = "→ " if cat == category else "  "
-                print(f"  {marker}{cat}: {count} documents")
-            
-            # Show top results from target category
-            target_results = [r for r in search_results if r["category"] == category]
-            if target_results:
-                print(f"\nTop results from target category '{category}':")
-                for i, r in enumerate(target_results[:10]):
-                    print(f"  {i+1}. {r['filename']} - {r['confidence']}%")
-                    if r['confidence'] > 50:
-                        print(f"      {r['content'][:80]}...")
-            else:
-                print(f"\n No results found in target category '{category}'")
-                print("Showing top results from all categories:")
-                for i, r in enumerate(search_results[:10]):
-                    print(f"  {i+1}. {r['filename']} ({r['category']}) - {r['confidence']}%")
+        result["total_results"] = len(filtered_results)
+        result["high_confidence_results"] = len(high_confidence_matches)
         
         return result
         
@@ -216,7 +261,6 @@ def search_similar_case(query: str) -> Dict[str, Any]:
         traceback.print_exc()
         return {
             "found": False,
-            "cases_found": False,
             "message": f"System error: {str(e)}",
             "query": query
         }
@@ -225,9 +269,6 @@ def build_enhanced_prompt(query: str, search_results: List[Dict[str, Any]], cate
     """
     Build prompt with clear document type differentiation
     """
-    # Load all cases for context
-    cases = load_all_cases()
-    
     # Separate special_cases from knowledge_base documents
     special_cases_results = []
     knowledge_docs_results = []
@@ -420,71 +461,3 @@ def parse_rag_response(raw_response: str, search_results: List[Dict[str, Any]]) 
         "similarity": similarity,
         "response_type": "special_case" if has_special_case_format else "knowledge_doc"
     }
-def search_similar_case(query: str) -> Dict[str, Any]:
-    """
-    Enhanced search with RAG
-    """
-    try:
-        # 1. Use LLM to classify query category
-        category = classify_query_category(query)
-        print(f"\n=== RAG SEARCH ===")
-        print(f"Query: '{query}'")
-        print(f"LLM Category: {category}")
-        
-        # 2. Search ALL documents in this category
-        search_results = search_by_category(query, category=category)
-        
-        # 3. Filter low confidence results (<20%)
-        filtered_results = [r for r in search_results if r.get("confidence", 0) >= 20]
-        
-        if not filtered_results:
-            print(f"No results with confidence >=20%, using all results")
-            filtered_results = search_results
-        
-        print(f"Results after confidence filter: {len(filtered_results)}/{len(search_results)}")
-        
-        # 4. Build prompt
-        prompt = build_enhanced_prompt(query, filtered_results, category)
-        
-        # 5. Generate response
-        response = llm_service.generate_response(prompt)
-        
-        # 6. Parse response
-        result = parse_rag_response(response, filtered_results)
-        
-        # Add metadata (BEZ 'cases_found' jeśli go nie ma!)
-        result["query"] = query
-        result["category"] = category
-        result["total_results"] = len(filtered_results)
-        result["high_confidence_results"] = len([r for r in filtered_results if r.get("confidence", 0) >= 40])
-        
-        # Debug information
-        print(f"\n Search Summary:")
-        print(f"   Query: '{query}'")
-        print(f"   Category: {category}")
-        print(f"   Total results: {len(filtered_results)}")
-        print(f"   High confidence (≥40%): {result['high_confidence_results']}")
-        print(f"   Response type: {result.get('response_type', 'unknown')}")
-        
-        # Show confidence distribution
-        if filtered_results:
-            confidences = [r.get("confidence", 0) for r in filtered_results]
-            print(f"   Confidence stats: min={min(confidences)}%, max={max(confidences)}%, avg={sum(confidences)/len(confidences):.1f}%")
-            
-            # Show top 3
-            print(f"\nTop 3 results:")
-            for i, r in enumerate(filtered_results[:3]):
-                source_type = "CASE" if r.get("collection") == "special_cases" else "DOC"
-                print(f"   {i+1}. {r['filename']} ({source_type}) - {r['confidence']}%")
-        
-        return result
-        
-    except Exception as e:
-        print(f"ERROR in search_similar_case: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {
-            "found": False,
-            "message": f"System error: {str(e)}",
-            "query": query
-        }

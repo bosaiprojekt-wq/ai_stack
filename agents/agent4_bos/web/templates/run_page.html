@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Agent4 BOS - Chatbot AI</title>
     <style>
         * {
             box-sizing: border-box;
         }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
             padding: 0;
             background: #e9ecef;
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Zapobiega podwójnym paskom przewijania */
+            overflow: hidden;
         }
 
         /* --- UI STRUKTURA --- */
@@ -23,16 +25,14 @@
             flex-direction: column;
             height: 100vh;
             width: 100%;
-            /* Domyślny tryb "skupiony" */
             max-width: 1000px;
             margin: 0 auto;
             background: white;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
             position: relative;
             transition: max-width 0.3s ease, margin 0.3s ease, box-shadow 0.3s ease;
         }
 
-        /* --- NOWY STYL: TRYB PEŁNOEKRANOWY --- */
         .main-container.full-width {
             max-width: 100%;
             margin: 0;
@@ -49,9 +49,10 @@
             justify-content: space-between;
             align-items: center;
             z-index: 10;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            flex-shrink: 0; /* Header nie może się kurczyć */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
         }
+
         .header-title h1 {
             margin: 0;
             font-size: 1.2rem;
@@ -59,12 +60,14 @@
             align-items: center;
             gap: 10px;
         }
+
         .header-status {
             font-size: 0.8rem;
             display: flex;
             align-items: center;
             gap: 5px;
         }
+
         .status-dot {
             width: 8px;
             height: 8px;
@@ -73,9 +76,8 @@
             display: inline-block;
         }
 
-        /* Przyciski w nagłówku */
         .header-btn {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             border: none;
             color: white;
             cursor: pointer;
@@ -88,8 +90,9 @@
             justify-content: center;
             transition: background 0.2s;
         }
+
         .header-btn:hover {
-            background: rgba(255,255,255,0.4);
+            background: rgba(255, 255, 255, 0.4);
         }
 
         /* CHAT AREA */
@@ -104,7 +107,6 @@
             scroll-behavior: smooth;
         }
 
-        /* WIADOMOŚCI */
         .msg {
             max-width: 80%;
             padding: 12px 16px;
@@ -116,7 +118,7 @@
             animation: fadeIn 0.3s ease;
             transition: all 0.2s;
         }
-        
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -148,7 +150,6 @@
             padding: 5px;
         }
 
-        /* AKCJE WIADOMOŚCI */
         .msg-actions {
             position: absolute;
             bottom: 5px;
@@ -164,9 +165,7 @@
         }
 
         @media (max-width: 768px) {
-            .msg-actions {
-                opacity: 0.6;
-            }
+            .msg-actions { opacity: 0.6; }
         }
 
         .action-btn {
@@ -193,7 +192,7 @@
             padding: 20px;
             background: white;
             border-top: 1px solid #e0e0e0;
-            flex-shrink: 0; /* Input nie może się kurczyć */
+            flex-shrink: 0;
         }
 
         #runForm {
@@ -215,7 +214,7 @@
             transition: border-color 0.3s;
             overflow: hidden;
         }
-        
+
         textarea#inputField:focus {
             border-color: #667eea;
         }
@@ -235,14 +234,8 @@
             justify-content: center;
         }
 
-        .send-btn:hover {
-            transform: scale(1.05);
-        }
-        
-        .send-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
+        .send-btn:hover { transform: scale(1.05); }
+        .send-btn:disabled { background: #ccc; cursor: not-allowed; }
 
         /* LOADING */
         .typing-indicator {
@@ -255,59 +248,40 @@
             border: 1px solid #e0e0e0;
             margin-bottom: 10px;
         }
-        
-        .typing-dots {
-            display: flex;
-            gap: 4px;
-        }
-        
+
+        .typing-dots { display: flex; gap: 4px; }
+
         .dot {
-            width: 8px;
-            height: 8px;
-            background: #bbb;
-            border-radius: 50%;
+            width: 8px; height: 8px; background: #bbb; border-radius: 50%;
             animation: bounce 1.4s infinite ease-in-out both;
         }
-        
+
         .dot:nth-child(1) { animation-delay: -0.32s; }
         .dot:nth-child(2) { animation-delay: -0.16s; }
-        
+
         @keyframes bounce {
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1); }
         }
 
         .msg-meta {
-            font-size: 10px;
-            opacity: 0.7;
-            margin-top: 5px;
-            text-align: right;
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-bottom: 5px; 
+            font-size: 10px; opacity: 0.7; margin-top: 5px; text-align: right;
+            display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 5px;
         }
 
-        /* Toolbar */
         .toolbar {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 20px;
-            font-size: 0.8rem;
-            color: #7f8c8d;
-            background: #f8f9fa;
-            border-top: 1px solid #eee;
-            flex-shrink: 0;
+            display: flex; justify-content: space-between; padding: 10px 20px;
+            font-size: 0.8rem; color: #7f8c8d; background: #f8f9fa;
+            border-top: 1px solid #eee; flex-shrink: 0;
         }
-        
+
         .toolbar a {
-            color: #667eea;
-            text-decoration: none;
-            margin-right: 15px;
+            color: #667eea; text-decoration: none; margin-right: 15px;
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
+
 <body>
 
     <div class="main-container" id="mainContainer">
@@ -317,7 +291,7 @@
             </div>
             <div class="header-status">
                 <span class="status-dot"></span> Online | Llama 3
-                
+
                 <button class="header-btn" onclick="toggleLayout()" title="Przełącz pełny ekran">
                     <i class="fas fa-expand" id="resizeIcon"></i>
                 </button>
@@ -328,8 +302,7 @@
             </div>
         </div>
 
-        <div id="chat-history">
-        </div>
+        <div id="chat-history"></div>
 
         <div id="loading" class="typing-indicator">
             <div class="typing-dots">
@@ -369,15 +342,12 @@
         const mainContainer = document.getElementById('mainContainer');
         const resizeIcon = document.getElementById('resizeIcon');
 
-        // Wiadomość powitalna
         window.addEventListener('DOMContentLoaded', () => {
-             appendMessage('Cześć! Jestem Twoim asystentem AI. W czym mogę Ci dzisiaj pomóc?', 'bot', 'Teraz');
+            appendMessage('Cześć! Jestem Twoim asystentem AI. W czym mogę Ci dzisiaj pomóc?', 'bot', 'Teraz');
         });
 
-        // --- NOWA FUNKCJA: Przełączanie układu strony ---
         function toggleLayout() {
             mainContainer.classList.toggle('full-width');
-            
             if (mainContainer.classList.contains('full-width')) {
                 resizeIcon.classList.remove('fa-expand');
                 resizeIcon.classList.add('fa-compress');
@@ -387,18 +357,24 @@
             }
         }
 
-        // Automatyczne dopasowanie wysokości pola
-        inputField.addEventListener('input', function() {
+        inputField.addEventListener('input', function () {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
-            if(this.value === '') this.style.height = '50px';
+            if (this.value === '') this.style.height = '50px';
         });
 
-        inputField.addEventListener('keydown', function(e) {
+        // POPRAWIONA OBSŁUGA ENTER - Zapobiega przeładowaniu
+        inputField.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                runForm.dispatchEvent(new Event('submit'));
+                e.preventDefault(); // Kluczowe: zatrzymuje domyślną akcję (nowa linia/submit)
+                handleChatSubmit();
             }
+        });
+
+        // Obsługa kliknięcia przycisku Wyślij
+        runForm.addEventListener('submit', function (e) {
+            e.preventDefault(); // Kluczowe: zatrzymuje przeładowanie strony
+            handleChatSubmit();
         });
 
         function scrollToBottom() {
@@ -408,9 +384,12 @@
         function appendMessage(text, sender, meta = null) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `msg ${sender}`;
-            
-            const textContent = document.createTextNode(text);
-            msgDiv.appendChild(textContent);
+
+            if (sender === 'bot') {
+                msgDiv.innerHTML = text.replace(/\n/g, '<br>');
+            } else {
+                msgDiv.textContent = text;
+            }
 
             if (meta) {
                 const metaDiv = document.createElement('div');
@@ -441,11 +420,9 @@
             }
 
             chatHistory.insertBefore(msgDiv, loadingIndicator.parentNode === chatHistory ? loadingIndicator : null);
-            
-            if(loadingIndicator.parentNode !== chatHistory) {
-                 chatHistory.appendChild(msgDiv);
+            if (loadingIndicator.parentNode !== chatHistory) {
+                chatHistory.appendChild(msgDiv);
             }
-
             scrollToBottom();
         }
 
@@ -494,16 +471,15 @@
         }
 
         function clearChat() {
-            if(confirm('Czy na pewno chcesz wyczyścić historię czatu?')) {
+            if (confirm('Czy na pewno chcesz wyczyścić historię czatu?')) {
                 chatHistory.innerHTML = '';
                 chatHistory.appendChild(loadingIndicator);
                 appendMessage('Historia czatu została wyczyszczona.', 'system');
             }
         }
 
-        runForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
+        // Główna logika wysyłania
+        async function handleChatSubmit() {
             const text = inputField.value.trim();
             if (!text) return;
 
@@ -515,7 +491,6 @@
             const startTime = Date.now();
 
             try {
-                // Mock request
                 const response = await fetch('../support', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -524,24 +499,49 @@
 
                 const endTime = Date.now();
                 const duration = ((endTime - startTime) / 1000).toFixed(1);
-                
+
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const result = await response.json();
                 hideLoading();
-                
-                const botResponse = result.message || result.response || "Otrzymano pustą odpowiedź.";
+
+                let botResponse = result.message || result.response || "Otrzymano pustą odpowiedź.";
                 const metaInfo = `<i class="fas fa-clock"></i> ${duration}s | <i class="fas fa-database"></i> ${result.collection || 'agent4_bos'}`;
-                
+
                 appendMessage(botResponse, 'bot', metaInfo);
                 responseTimer.textContent = `Ostatnia odp: ${duration}s`;
-
+                
+                if (result.generated_file) {
+                    botResponse += `\n\n<div style="margin-top: 10px; padding: 10px; background: #e8f4fd; border-radius: 8px; border: 1px solid #b8daff;">
+                        <i class="fas fa-file-word" style="color: #2b5797; font-size: 20px;"></i> 
+                        <strong>Wygenerowano plik:</strong> ${result.generated_file.name}<br>
+                        <a href="${result.generated_file.download_url}" target="_blank" style="display: inline-block; margin-top: 8px; padding: 6px 12px; background: #2b5797; color: white; text-decoration: none; border-radius: 4px;">
+                            <i class="fas fa-download"></i> Pobierz dokument (.docx)
+                        </a>
+                    </div>`;
+                    // Odśwież ostatnią wiadomość, aby dodać link
+                    const lastMsg = chatHistory.lastElementChild;
+                    if(lastMsg && lastMsg.classList.contains('bot')) {
+                        // Znajdź div z treścią (to trochę hacky, ale appendMessage jest prosta)
+                        // Lepiej po prostu dodać nowy element
+                        const linkDiv = document.createElement('div');
+                        linkDiv.innerHTML = `
+                        <div style="margin-top: 10px; padding: 10px; background: #e8f4fd; border-radius: 8px; border: 1px solid #b8daff;">
+                            <i class="fas fa-file-word" style="color: #2b5797; font-size: 20px;"></i> 
+                            <strong>Wygenerowano plik:</strong> ${result.generated_file.name}<br>
+                            <a href="${result.generated_file.download_url}" target="_blank" style="display: inline-block; margin-top: 8px; padding: 6px 12px; background: #2b5797; color: white; text-decoration: none; border-radius: 4px;">
+                                <i class="fas fa-download"></i> Pobierz dokument (.docx)
+                            </a>
+                        </div>`;
+                        lastMsg.insertBefore(linkDiv, lastMsg.querySelector('.msg-actions'));
+                    }
+                }
             } catch (error) {
                 hideLoading();
-                const fallbackMeta = `<i class="fas fa-clock"></i> 0.5s | <i class="fas fa-exclamation-triangle"></i> Demo Mode`;
-                appendMessage(`To jest przykładowa odpowiedź. Endpoint API zwrócił błąd lub nie istnieje w tym środowisku demo.\n\nTreść błędu: ${error.message}`, 'bot', fallbackMeta);
+                const fallbackMeta = `<i class="fas fa-clock"></i> 0.5s | <i class="fas fa-exclamation-triangle"></i> Error`;
+                appendMessage(`Wystąpił błąd komunikacji z serwerem: ${error.message}`, 'bot', fallbackMeta);
             }
-        });
+        }
     </script>
 </body>
 </html>

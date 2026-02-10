@@ -2,13 +2,14 @@ from fastapi import FastAPI, Body, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles  # ADDED
 import os
 
 # Import components
 from web.forms import form_app
 from web.run_interface import run_app
 from core.qdrant_service import get_case_count, list_cases_summary, get_database_info
-from core.config import COLLECTION_NAME 
+from core.config import COLLECTION_NAME, BASE_DATA_PATH # CHANGED: imported BASE_DATA_PATH
 from api.api import handle_support_request
 # =========================
 # MAIN APP CONFIGURATION
@@ -35,6 +36,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ADDED: Mount data directory for generated files download
+# Maps http://host/data/... to local /app/qdrant_data/...
+if os.path.exists(BASE_DATA_PATH):
+    app.mount("/data", StaticFiles(directory=BASE_DATA_PATH), name="data")
+    print(f"Mounted /data to {BASE_DATA_PATH}")
 
 # Mount sub-applications
 app.mount("/form", form_app)
