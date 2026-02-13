@@ -76,7 +76,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 550,
+        "x": 530,
         "y": 120,
         "wires": [
             [
@@ -176,33 +176,53 @@
         "wires": []
     },
     {
-        "id": "fed77b0744e32413",
+        "id": "5a7a2aab9ccdccb9",
         "type": "inject",
         "z": "495852470244b479",
-        "name": "Baza przypadków",
+        "name": "AGENT - wygeneruj plik",
         "props": [],
         "repeat": "",
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 260,
-        "y": 420,
+        "x": 240,
+        "y": 360,
         "wires": [
             [
-                "f09ce2abd54515b3"
+                "b81d6b00c41f14c4"
             ]
         ]
     },
     {
-        "id": "f09ce2abd54515b3",
+        "id": "b81d6b00c41f14c4",
+        "type": "function",
+        "z": "495852470244b479",
+        "name": "Wygeneruj dokument",
+        "func": "msg.payload = {\n    query: \"Wygeneruj wniosek o dołączenie do koła studenckiego\"\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 360,
+        "wires": [
+            [
+                "d22307fd285641e8"
+            ]
+        ]
+    },
+    {
+        "id": "d22307fd285641e8",
         "type": "http request",
         "z": "495852470244b479",
-        "name": "QDRANT - request",
-        "method": "GET",
+        "name": "/support endpoint",
+        "method": "POST",
         "ret": "obj",
         "paytoqs": "ignore",
-        "url": "http://agent4_bos:8000/cases",
+        "url": "http://agent4_bos:8000/support",
         "tls": "",
         "persist": false,
         "proxy": "",
@@ -215,161 +235,27 @@
                 "keyValue": "Content-Type",
                 "valueType": "other",
                 "valueValue": "application/json"
+            },
+            {
+                "keyType": "other",
+                "keyValue": "accept",
+                "valueType": "other",
+                "valueValue": "application/json"
             }
         ],
         "x": 790,
-        "y": 420,
+        "y": 360,
         "wires": [
             [
-                "a34e258d12a069d8"
+                "80f0110b23d855e8"
             ]
         ]
     },
     {
-        "id": "a34e258d12a069d8",
+        "id": "80f0110b23d855e8",
         "type": "debug",
         "z": "495852470244b479",
         "name": "debug 3",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload.cases",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1000,
-        "y": 420,
-        "wires": []
-    },
-    {
-        "id": "1852af3336c85a76",
-        "type": "inject",
-        "z": "495852470244b479",
-        "name": "Baza protokołów",
-        "props": [],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 260,
-        "y": 520,
-        "wires": [
-            [
-                "682a4c991480d6cb"
-            ]
-        ]
-    },
-    {
-        "id": "682a4c991480d6cb",
-        "type": "http request",
-        "z": "495852470244b479",
-        "name": "QDRANT - request",
-        "method": "GET",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "http://agent4_bos:8000/protocols_list",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 790,
-        "y": 520,
-        "wires": [
-            [
-                "195fe8d588eaa6cf"
-            ]
-        ]
-    },
-    {
-        "id": "195fe8d588eaa6cf",
-        "type": "debug",
-        "z": "495852470244b479",
-        "name": "debug 4",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1000,
-        "y": 520,
-        "wires": []
-    },
-    {
-        "id": "6eb112361e5ba7e2",
-        "type": "inject",
-        "z": "495852470244b479",
-        "name": "AGENT - przeszukaj protokoły",
-        "props": [],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 220,
-        "y": 340,
-        "wires": [
-            [
-                "9f1aa27664186bee"
-            ]
-        ]
-    },
-    {
-        "id": "9f1aa27664186bee",
-        "type": "function",
-        "z": "495852470244b479",
-        "name": "Ile jest otwartych protokołów?",
-        "func": "msg.payload = {\n    query: \"Ile jest otwartych protokołów?\"\n};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 530,
-        "y": 340,
-        "wires": [
-            [
-                "c6211162fe649933"
-            ]
-        ]
-    },
-    {
-        "id": "c6211162fe649933",
-        "type": "http request",
-        "z": "495852470244b479",
-        "name": "/protocols endpoint",
-        "method": "POST",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "http://agent4_bos:8000/protocols",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 790,
-        "y": 340,
-        "wires": [
-            [
-                "4620c3011e04dd49"
-            ]
-        ]
-    },
-    {
-        "id": "4620c3011e04dd49",
-        "type": "debug",
-        "z": "495852470244b479",
-        "name": "debug 5",
         "active": true,
         "tosidebar": true,
         "console": false,
@@ -379,7 +265,7 @@
         "statusVal": "",
         "statusType": "auto",
         "x": 1000,
-        "y": 340,
+        "y": 360,
         "wires": []
     }
 ]

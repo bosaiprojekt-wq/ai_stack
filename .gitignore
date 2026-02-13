@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 *.env
 *.venv
+*.vvv
 
 # Docker
 **/docker-compose.override.yml
