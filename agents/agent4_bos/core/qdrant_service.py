@@ -7,15 +7,12 @@ from .config import (
     QDRANT_HOST, QDRANT_PORT, 
     SPECIAL_CASES_COLLECTION, 
     KNOWLEDGE_BASE_COLLECTION,
-    COLLECTION_NAME
 )
 
 class QdrantService:
     def __init__(self, host=QDRANT_HOST, port=QDRANT_PORT):
         self.client = QdrantClient(host=host, port=port)
-        #self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
         self.embedder = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
-        # self.embedder = SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
 
         # Collections
         self.collections = {
@@ -51,9 +48,9 @@ class QdrantService:
         """
         print("=" * 60)
         if delete_structure:
-            print("DELETING AND RECREATING COLLECTIONS")
+            print("RECREATING COLLECTIONS")
         else:
-            print("CLEARING COLLECTION CONTENTS (keeping structure)")
+            print("CLEARING COLLECTION CONTENTS")
         print("=" * 60)
         
         for collection_key, collection_name in self.collections.items():
@@ -70,7 +67,7 @@ class QdrantService:
                     # Only clear content
                     self.client.delete(
                         collection_name=collection_name,
-                        points_selector=Filter(must=[])  # empty filter = everything
+                        points_selector=Filter(must=[]) 
                     )
                     print(f"Cleared: {collection_name} (structure kept)")
                     
@@ -171,7 +168,7 @@ class QdrantService:
             content_to_hash = f"{case_data.get('title', '')}_{case_data.get('description', '')}_{case_data.get('solution', '')}"
             content_hash = hashlib.md5(content_to_hash.encode()).hexdigest()
             
-            print(f"🔍 Checking for duplicates (hash: {content_hash[:8]})...")
+            print(f"Checking for duplicates (hash: {content_hash[:8]})...")
             
             # Check if similar case already exists
             try:
@@ -197,7 +194,7 @@ class QdrantService:
                     similarity = best_match.score * 100
                     
                     if similarity > 85:  # High similarity threshold
-                        print(f"⏭️ Similar case already exists: {best_match.payload.get('title', 'unknown')} ({similarity:.1f}% match)")
+                        print(f"Similar case already exists: {best_match.payload.get('title', 'unknown')} ({similarity:.1f}% match)")
                         return {
                             "status": "duplicate",
                             "case_id": best_match.payload.get('case_id', 'unknown'),
@@ -206,7 +203,7 @@ class QdrantService:
                         }
                         
             except Exception as e:
-                print(f"⚠️ Duplicate check failed: {e}")
+                print(f"Duplicate check failed: {e}")
             
             # Generate text for embedding
             text_for_embedding = f"{case_data.get('title', '')} {case_data.get('description', '')} {case_data.get('solution', '')}"
@@ -250,9 +247,9 @@ class QdrantService:
                 points=[point]
             )
             
-            print(f"✅ Case saved to Qdrant: {case_id}")
-            print(f"   Title: {case_data.get('title', '')[:50]}...")
-            print(f"   Content hash: {content_hash[:8]}")
+            print(f"Case saved to Qdrant: {case_id}")
+            print(f"Title: {case_data.get('title', '')[:50]}...")
+            print(f"Content hash: {content_hash[:8]}")
             
             return {
                 "status": "success",
@@ -263,7 +260,7 @@ class QdrantService:
             }
             
         except Exception as e:
-            print(f"❌ Error saving case to Qdrant: {e}")
+            print(f"Error saving case to Qdrant: {e}")
             return {
                 "status": "error",
                 "message": f"Błąd zapisu do Qdrant: {str(e)}"
@@ -273,7 +270,7 @@ class QdrantService:
         """Save a document chunk to Qdrant"""
         collection_name = self.collections.get(collection, KNOWLEDGE_BASE_COLLECTION)
         
-        # Ensure ID is a string (UUIDs are already strings)
+        # Ensure ID is a string
         point_id = str(chunk_data["id"])
         
         # Generate embedding
@@ -366,7 +363,7 @@ class QdrantService:
             search_results = self.client.search(
                 collection_name=collection_name,
                 query_vector=query_embedding,
-                query_filter=search_filter,  # THIS IS THE KEY - add filter here
+                query_filter=search_filter,
                 limit=limit * 2  # Get more results for confidence filtering
             )
             
@@ -460,38 +457,6 @@ qdrant_service = QdrantService()
 # Compatibility wrapper: return all cases via the Qdrant service
 def load_all_cases() -> List[Dict[str, Any]]:
     return qdrant_service.get_all_cases()
-
-# Compatibility wrapper: save a special case via the Qdrant service
-def save_case(title: str, author: str, description: str, solution: str, notes: str = "") -> Dict[str, Any]:
-    import datetime
-    
-    case_id = f"SP-{int(datetime.datetime.now().timestamp())}"
-    
-    data = {
-        "case_id": case_id,
-        "title": title,
-        "author": author,
-        "description": description,
-        "solution": solution,
-        "additional_notes": notes,
-        "created_at": datetime.datetime.now().isoformat(),
-        "type": "special_case"
-    }
-
-    try:
-        saved_case_id = qdrant_service.save_case(data, collection="special_cases")
-        return {
-            "status": "success",
-            "case_id": saved_case_id,
-            "data": data,
-            "storage": "qdrant"
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": "Failed to save case to Qdrant",
-            "details": str(e)
-        }
 
 # Return a lightweight summary list for each saved case
 def list_cases_summary() -> List[Dict[str, Any]]:

@@ -27,7 +27,7 @@ class DocumentGenerator:
 
     def _generate_content_with_llm(self, topic: str) -> dict:
         """Generates the title, filename and body of the document using LLM based on the provided topic."""
-        # Zmodyfikowany prompt wymuszający konkretny format odpowiedzi z wyraźnymi nagłówkami
+
         prompt = f"""Jesteś doświadczonym pracownikiem administracji uczelnianej.
 Użytkownik prosi o przygotowanie dokumentu na podstawie opisu: "{topic}"
 
@@ -64,15 +64,12 @@ TREŚĆ:
                 
             upper_line = clean_line.upper()
             if upper_line.startswith("NAZWA_PLIKU:"):
-                # Pobierz wszystko po dwukropku
                 suggested_filename = line.split(":", 1)[1].strip()
             elif upper_line.startswith("TYTUŁ:") or upper_line.startswith("TYTUL:"):
                 title = line.split(":", 1)[1].strip()
             elif upper_line.startswith("TREŚĆ:") or upper_line.startswith("TRESC:"):
                 is_body = True
             else:
-                # Jeśli mamy już metadane (nazwę lub tytuł), a linia nie jest nagłówkiem, 
-                # uznajemy to za początek treści (zabezpieczenie gdy model pominie nagłówek TREŚĆ)
                 if suggested_filename or title:
                     is_body = True
                     body_lines.append(line)
@@ -117,20 +114,18 @@ TREŚĆ:
             # Generowanie bezpiecznej nazwy pliku
             base_name = content.get("suggested_filename")
             
-            # Jeśli nazwa nie została wygenerowana przez LLM, użyj tytułu
+
             if not base_name:
                 if content['title'] and content['title'] != f"Dokument: {topic}":
                     base_name = content['title']
                 else:
-                    # Ostateczność: użyj tematu, ale to rzadki przypadek przy nowym prompcie
                     base_name = topic
             
-            # Czyszczenie nazwy pliku dla systemu plików
-            # Pozwalamy na litery, cyfry, spacje, podkreślenia i myślniki
+
             safe_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in base_name)[:60]
             safe_name = safe_name.replace(" ", "_")
             
-            # Usuń wielokrotne podkreślenia (np. AI_GEN__Podanie___123)
+
             while "__" in safe_name:
                 safe_name = safe_name.replace("__", "_")
             safe_name = safe_name.strip("_")
@@ -139,11 +134,11 @@ TREŚĆ:
             filename = f"AI_GEN_{safe_name}_{timestamp}.docx"
             filepath = os.path.join(target_folder, filename)
             
-            # Zapis
+
             doc.save(filepath)
             print(f"GENERATOR: Zapisano plik: {filepath}")
             
-            # Generowanie linku względnego
+
             relative_path = f"/data/knowledge_base/{target_category}/{filename}"
             
             return {

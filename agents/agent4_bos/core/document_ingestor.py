@@ -9,6 +9,7 @@ from .config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH
 from .document_processor import document_processor
 from .qdrant_service import qdrant_service
 
+#ingestor class
 class DocumentIngestor:
     def __init__(self):
         self.processed_files = {}
@@ -119,6 +120,8 @@ class DocumentIngestor:
         # Check if file was modified since last ingestion
         return current_mtime <= file_info["last_modified"]
 
+
+#watcher class 
 class FileWatcher(FileSystemEventHandler):
     def __init__(self, ingestor: DocumentIngestor):
         self.ingestor = ingestor
@@ -150,7 +153,7 @@ class FileWatcher(FileSystemEventHandler):
             return
         
         try:
-            print(f"\n🔍 Auto-detected new/modified file in {folder_name}:")
+            print(f"\nAuto-detected new/modified file in {folder_name}:")
             print(f"   File: {file_path_obj.name}")
             
             chunks = document_processor.process_file(file_path)
@@ -158,13 +161,13 @@ class FileWatcher(FileSystemEventHandler):
             for chunk in chunks:
                 qdrant_service.save_document_chunk(chunk, collection)
             
-            print(f"   ✓ Auto-ingested: {len(chunks)} chunks")
+            print(f"Auto-ingested: {len(chunks)} chunks")
             
         except Exception as e:
-            print(f"   ✗ Auto-ingestion failed: {e}")
+            print(f"Auto-ingestion failed: {e}")
 
 def start_file_watcher():
-    # Launch a filesystem observer to auto-ingest new or changed documents
+    # Launch a filesystem observer
     """Start watching folders for changes"""
     ingestor = DocumentIngestor()
     event_handler = FileWatcher(ingestor)
@@ -172,7 +175,7 @@ def start_file_watcher():
     
     # Watch both folders
     folders_to_watch = []
-    for folder, name in [(KNOWLEDGE_BASE_PATH, "knowledge_base")]:
+    for folder, name in [(KNOWLEDGE_BASE_PATH, "knowledge_base"), (SPECIAL_CASES_PATH, "special_cases")]:
         if os.path.exists(folder):
             observer.schedule(event_handler, folder, recursive=True)
             folders_to_watch.append(name)

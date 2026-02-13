@@ -9,11 +9,10 @@ import os
 from web.forms import form_app
 from web.run_interface import run_app
 from core.qdrant_service import get_case_count, list_cases_summary, get_database_info
-from core.config import COLLECTION_NAME, BASE_DATA_PATH # CHANGED: imported BASE_DATA_PATH
+from core.config import KNOWLEDGE_BASE_COLLECTION, SPECIAL_CASES_COLLECTION, BASE_DATA_PATH 
 from api.api import handle_support_request
-# =========================
-# MAIN APP CONFIGURATION
-# =========================
+from core.document_ingestor import document_ingestor
+from core.config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH
 
 app = FastAPI(
     title="Agent4 BOS Support",
@@ -37,7 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ADDED: Mount data directory for generated files download
+# Mount data directory for generated files download
 # Maps http://host/data/... to local /app/qdrant_data/...
 if os.path.exists(BASE_DATA_PATH):
     app.mount("/data", StaticFiles(directory=BASE_DATA_PATH), name="data")
@@ -47,19 +46,17 @@ if os.path.exists(BASE_DATA_PATH):
 app.mount("/form", form_app)
 app.mount("/run_page", run_app)
 
-# =========================
-# MAIN APP ROUTES
-# =========================
+
 
 @app.get("/", response_class=HTMLResponse)
 # Render the main dashboard page with links and case count
-async def read_root(request: Request):  # <-- Add request parameter
+async def read_root(request: Request):
     """Main landing page with links to all services"""
     return templates.TemplateResponse(
         "dashboard.html",
         {
             "request": request,
-            "json_folder_path": f"qdrant://{COLLECTION_NAME}",  # CHANGED
+            "json_folder_path": f"qdrant://{SPECIAL_CASES_COLLECTION}",
             "case_count": get_case_count()
         }
     )
@@ -76,7 +73,7 @@ async def health_check():
     try:
         db_info = get_database_info()
         case_count = get_case_count()
-        # CHANGED: Check Qdrant instead of JSON folder
+        # Check Qdrant 
         db_ok = db_info.get("storage") == "qdrant" and case_count >= 0
     except:
         db_ok = False
@@ -105,7 +102,7 @@ async def health_check():
             "database": {
                 "healthy": db_ok,
                 "cases": get_case_count() if db_ok else 0,
-                "path": f"qdrant://{COLLECTION_NAME}" if db_ok else "unknown",  # CHANGED
+                "path": f"qdrant://{SPECIAL_CASES_COLLECTION}" if db_ok else "unknown",  # CHANGED
                 "storage": db_info.get("storage", "unknown") if db_ok else "unknown"
             },
             "llm_service": {
@@ -127,7 +124,7 @@ async def support(query: str = Body(..., embed=True)):
     return await handle_support_request(query)
 
 
-#all db cases endpoint
+#all cases endpoint
 @app.get("/cases")
 # Return a summary list of cases from the database
 async def list_cases():
@@ -136,7 +133,7 @@ async def list_cases():
     return {
         "cases": cases,
         "count": len(cases),
-        "database_path": f"qdrant://{COLLECTION_NAME}" 
+        "database_path": f"qdrant://{SPECIAL_CASES_COLLECTION}" 
     }
 
 #db info endpoint
@@ -146,12 +143,6 @@ async def get_database_info_endpoint():
     """Get database information"""
     return get_database_info()
 
-# app.py - ADD THESE NEW ENDPOINTS
-from core.document_ingestor import document_ingestor
-from core.config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH
-
-# Add after existing imports
-
 @app.post("/ingest/knowledge-base")
 # Trigger ingestion of the knowledge base folder into Qdrant
 async def ingest_knowledge_base(force: bool = False):
@@ -160,14 +151,14 @@ async def ingest_knowledge_base(force: bool = False):
     return result
 
 @app.post("/ingest/special-cases")
-# Trigger ingestion of special cases (form responses) into Qdrant
+# Trigger ingestion of special cases into Qdrant
 async def ingest_special_cases(force: bool = False):
     """Ingest all documents from special_cases folder"""
     result = document_ingestor.ingest_special_cases(force_reingest=force)
     return result
 
 @app.post("/ingest/all")
-# Run ingestion for both knowledge base and special cases sequentially
+# Run ingestion for both knowledge base and special cases
 async def ingest_all(force: bool = False):
     """Ingest all documents from both folders"""
     kb_result = document_ingestor.ingest_knowledge_base(force_reingest=force)
@@ -198,14 +189,11 @@ async def get_file_paths():
         }
     }
     
-# =========================
-# STARTUP DEBUG INFO
-# =========================
 
 print("=" * 60)
-print("Agent4 BOS Main Application Initialized...")
-print(f"Form app mounted at: /form")
-print(f"Run page app mounted at: /run_page")
-print(f"Database cases: {get_case_count()}")
-print(f"Storage: Qdrant collection '{COLLECTION_NAME}'")  # ADDED
+print("Agent4 BOS Main Application Initialized")
+print(f"Form app mounted at: http://localhost:8004/form/")
+print(f"Chat app mounted at: http://localhost:8004/run_page/")
+print(f"Storage: Qdrant special case collection '{SPECIAL_CASES_COLLECTION}'") 
+print(f"Storage: Qdrant knowledge base collection '{KNOWLEDGE_BASE_COLLECTION}'")  
 print("=" * 60)

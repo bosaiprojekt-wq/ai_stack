@@ -43,7 +43,7 @@ Twoja odpowiedź (TYLKO nazwa kategorii lub "all"):"""
     try:
         response = llm_service.generate_response(
             prompt, 
-            temperature=0.1,
+            temperature=0.5,
             max_tokens=50
         )
         
@@ -64,63 +64,6 @@ Twoja odpowiedź (TYLKO nazwa kategorii lub "all"):"""
         print(f"Error in LLM classification: {e}")
         return ALL_CATEGORIES_KEY
 
-
-# def search_by_category(query: str, category: str = None) -> List[Dict[str, Any]]:
-#     """
-#     Search ALL documents in a specific category (no limit)
-#     Returns ALL results sorted by relevance
-#     """
-#     if not category or category == ALL_CATEGORIES_KEY:
-#         # No category filter - search all (with reasonable limit)
-#         print(f"Searching ALL categories for: '{query}'")
-#         knowledge_results = qdrant_service.search(query, collection="knowledge_base", limit=100)
-#     else:
-#         # Search ALL documents in this category
-#         print(f"Searching ALL documents in category '{category}' for: '{query}'")
-#         knowledge_results = qdrant_service.search_all_in_category(
-#             query=query,
-#             category=category,
-#             collection="knowledge_base"
-#         )
-    
-#     # Always search special_cases (with limit)
-#     case_results = qdrant_service.search(query, collection="special_cases", limit=50)
-    
-#     # Combine all results
-#     all_results = knowledge_results + case_results
-    
-#     print(f"DEBUG: Found {len(knowledge_results)} from knowledge_base, {len(case_results)} from special_cases")
-    
-#     # Format all results
-#     formatted_results = []
-#     for i, result in enumerate(all_results):
-#         # Format for LLM
-#         metadata = result.get("metadata", {})
-#         if not metadata and "payload" in result:
-#             metadata = result["payload"].get("metadata", {})
-        
-#         # Calculate confidence
-#         confidence = round(result.get("score", 0) * 100, 1)
-        
-#         formatted_result = {
-#             "rank": i + 1,
-#             "score": result.get("score", 0),
-#             "content": result.get("text", ""),
-#             "source": metadata.get("source_file", "Unknown"),
-#             "filename": metadata.get("filename", "Unknown"),
-#             "type": "Form Response" if result.get("collection") == "special_cases" else "Document",
-#             "category": metadata.get("category", "General"),
-#             "confidence": confidence,
-#             "collection": result.get("collection", "unknown")
-#         }
-#         formatted_results.append(formatted_result)
-    
-#     # Sort by score (most relevant first)
-#     formatted_results.sort(key=lambda x: x["score"], reverse=True)
-    
-#     print(f"DEBUG: Total formatted results: {len(formatted_results)}")
-    
-#     return formatted_results
 
 def search_by_category(query: str, category: str = None) -> List[Dict[str, Any]]:
     """
@@ -170,7 +113,7 @@ def search_by_category(query: str, category: str = None) -> List[Dict[str, Any]]
     for source_file, doc in documents.items():
         # Sort chunks by index to maintain order
         doc["chunks"].sort(key=lambda x: x["index"])
-        doc["all_content"] = [c["text"] for c in doc["chunks"]]  # Already in order
+        doc["all_content"] = [c["text"] for c in doc["chunks"]] 
         
         knowledge_docs.append({
             "filename": doc["filename"],
@@ -183,23 +126,23 @@ def search_by_category(query: str, category: str = None) -> List[Dict[str, Any]]
             "total_chunks": doc["total_chunks"],
             "collection": "knowledge_base"
         })
-    
+
     # Format special cases
     special_cases = []
     for result in case_results:
-        metadata = result.get("metadata", {})
+        payload = result.get("payload", {})
         special_cases.append({
-            "filename": f"Case: {metadata.get('title', 'Unknown')}",
+            "filename": f"Case: {payload.get('title', 'Unknown')}",
             "source": "special_cases",
             "category": "Special Case",
             "confidence": round(result.get("score", 0) * 100, 1),
-            "content": f"{metadata.get('description', '')}\n\n{metadata.get('solution', '')}",
+            "content": f"{payload.get('description', '')}\n\n{payload.get('solution', '')}",
             "collection": "special_cases",
-            "case_id": metadata.get("case_id", "unknown"),
-            "title": metadata.get("title", "Unknown"),
-            "author": metadata.get("author", "Unknown")
+            "case_id": payload.get("case_id", "unknown"),
+            "title": payload.get("title", "Unknown"),
+            "author": payload.get("author", "Unknown")
         })
-    
+
     # Combine and sort
     all_docs = knowledge_docs + special_cases
     all_docs.sort(key=lambda x: x["confidence"], reverse=True)
@@ -220,6 +163,7 @@ def search_by_category(query: str, category: str = None) -> List[Dict[str, Any]]
             print(f"   Preview: {doc['content'][:200].replace(chr(10), ' ')}...")
     print("\n" + "=" * 60)
     
+   
     return all_docs
 
 
@@ -241,7 +185,7 @@ def search_similar_case(query: str) -> Dict[str, Any]:
         is_generation = detect_generation_intent(query)
         category = classify_query_category(query)
         
-        # Handle "Confirmation" of generation (e.g. "Tak, wygeneruj")
+        # Handle "Confirmation" of generation
         topic_to_generate = query
         
         if is_generation:
@@ -267,8 +211,8 @@ def search_similar_case(query: str) -> Dict[str, Any]:
                 response_msg = (
                     f"Zgodnie z Twoją prośbą wygenerowałem dokument na temat: '{topic_to_generate}'.\n"
                     f"Został on zapisany w kategorii '{category}'.\n\n"
-                    f"📄 **Nazwa pliku:** {filename}\n"
-                    f"🔗 **Link do pobrania:** {download_url}"
+                    f"**Nazwa pliku:** {filename}\n"
+                    f"**Link do pobrania:** {download_url}"
                 )
                 
                 LAST_SEARCH_CONTEXT = {"query": None, "category": None}
@@ -309,8 +253,9 @@ def search_similar_case(query: str) -> Dict[str, Any]:
             )
         
         # Search special cases
+        print(f"Searching special cases for: '{query}'")
         case_results = qdrant_service.search(query, collection="special_cases", limit=50)
-        
+                
         print(f"Raw results: {len(knowledge_results)} knowledge chunks, {len(case_results)} special cases")
         
         # 3. GROUP knowledge chunks by source_file
@@ -336,7 +281,7 @@ def search_similar_case(query: str) -> Dict[str, Any]:
                     "collection": "knowledge_base"
                 }
             
-            # Add this chunk
+            # Add chunk
             confidence = round(result.get("score", 0) * 100, 1)
             chunk_index = metadata.get("chunk_index", 0)
             
@@ -382,24 +327,27 @@ def search_similar_case(query: str) -> Dict[str, Any]:
         # 4. Format special cases
         special_cases = []
         for result in case_results:
-            metadata = result.get("metadata", {})
-            if not metadata and "payload" in result:
-                metadata = result["payload"].get("metadata", {})
+            
+            payload = result.get("payload", {})
             
             confidence = round(result.get("score", 0) * 100, 1)
             
+            
             special_cases.append({
-                "filename": f"Sprawa: {metadata.get('title', 'Unknown')}",
+                "filename": f"Sprawa: {payload.get('title', 'Unknown')}",
                 "source": "special_cases",
                 "category": "Przypadek specjalny",
                 "confidence": confidence,
-                "content": f"Tytuł: {metadata.get('title', '')}\nOpis: {metadata.get('description', '')}\nRozwiązanie: {metadata.get('solution', '')}\nUwagi: {metadata.get('notes', '')}",
+                "content": f"Tytuł: {payload.get('title', '')}\nOpis: {payload.get('description', '')}\nRozwiązanie: {payload.get('solution', '')}\nUwagi: {payload.get('additional_notes', '')}",
                 "collection": "special_cases",
                 "type": "Form Response",
-                "case_id": metadata.get("case_id", "unknown"),
-                "title": metadata.get("title", "Unknown"),
-                "author": metadata.get("author", "Unknown"),
-                "created_at": metadata.get("created_at", "")
+                "case_id": payload.get("case_id", "unknown"),
+                "title": payload.get("title", "Unknown"),
+                "author": payload.get("author", "Nieznany"),
+                "created_at": payload.get("created_at", ""),
+                "description": payload.get("description", ""),
+                "solution": payload.get("solution", ""),
+                "notes": payload.get("additional_notes", "")
             })
         
         # 5. Combine all documents
@@ -416,7 +364,7 @@ def search_similar_case(query: str) -> Dict[str, Any]:
         else:
             for i, doc in enumerate(all_docs[:3], 1):
                 if doc["collection"] == "knowledge_base":
-                    print(f"\n{i}. 📄 {doc['filename']}")
+                    print(f"\n{i}. {doc['filename']}")
                     print(f"   Kategoria: {doc['category']}")
                     print(f"   Dopasowanie: {doc['confidence']}% (maks), {doc.get('avg_confidence', 0)}% (średnia)")
                     print(f"   Chunków: {doc['chunk_count']}/{doc['total_chunks']}")
@@ -424,7 +372,7 @@ def search_similar_case(query: str) -> Dict[str, Any]:
                     preview = doc['content'][:200].replace('\n', ' ').strip()
                     print(f"   Podgląd: {preview}...")
                 else:
-                    print(f"\n{i}. 📋 {doc['filename']}")
+                    print(f"\n{i}. {doc['filename']}")
                     print(f"   Autor: {doc.get('author', 'Nieznany')}")
                     print(f"   Dopasowanie: {doc['confidence']}%")
                     preview = doc['content'][:200].replace('\n', ' ').strip()
@@ -450,15 +398,15 @@ def search_similar_case(query: str) -> Dict[str, Any]:
                 found_info = f"Znalazłem {len(all_docs)} dokumentów, ale najlepsze dopasowanie to tylko {all_docs[0]['confidence']}%."
             
             prompt = f"""Użytkownik pyta o: "{query}".
-{found_info}
-Przeszukałeś bazę wiedzy w kategorii '{category}' i nie znalazłeś dokumentów z wystarczająco wysokim dopasowaniem (potrzebne >=35%).
-Twoim zadaniem jest:
-1. Poinformować użytkownika, że nie znalazłeś dobrze dopasowanego dokumentu w obecnej bazie.
-2. Zapytać użytkownika, czy chce, abyś wygenerował (stworzył) ten dokument teraz.
-3. Poinstruować go, że jeśli się zgadza, wystarczy że napisze: "Tak, wygeneruj".
+        {found_info}
+        Przeszukałeś bazę wiedzy w kategorii '{category}' i nie znalazłeś dokumentów z wystarczająco wysokim dopasowaniem (potrzebne >=35%).
+        Twoim zadaniem jest:
+        1. Poinformować użytkownika, że nie znalazłeś dobrze dopasowanego dokumentu w obecnej bazie.
+        2. Zapytać użytkownika, czy chce, abyś wygenerował (stworzył) ten dokument teraz.
+        3. Poinstruować go, że jeśli się zgadza, wystarczy że napisze: "Tak, wygeneruj".
 
-Odpowiedz krótko i konkretnie w języku polskim."""
-            
+        Odpowiedz krótko i konkretnie w języku polskim."""
+                    
             suggestion_response = llm_service.generate_response(prompt, temperature=0.3)
             
             return {
@@ -474,7 +422,7 @@ Odpowiedz krótko i konkretnie w języku polskim."""
         # 8. Use the best document for response
         best_doc = good_matches[0]
         
-        print(f"\n✅ Wybrano dokument do odpowiedzi:")
+        print(f"\nWybrano dokument do odpowiedzi:")
         print(f"   Tytuł: {best_doc['filename']}")
         print(f"   Dopasowanie: {best_doc['confidence']}%")
         print(f"   Długość treści: {len(best_doc['content'])} znaków")
@@ -512,14 +460,17 @@ Odpowiedz krótko i konkretnie w języku polskim."""
             "query": query
         }
 
-
 def build_document_prompt(query: str, document: Dict[str, Any], category: str = None) -> str:
     """
     Build prompt with single complete document
+    Trzy przypadki: knowledge_base, special_cases, brak informacji
     """
     file_path = document.get("source", "").replace("/app/qdrant_data/", "data/")
+    doc_type = document.get("collection", "knowledge_base")
     
-    prompt = f"""Jesteś asystentem Biura Obsługi Studenta w systemie uczelnianym i współpracujesz z jego pracownikami. Otrzymujesz pytanie i pełny dokument źródłowy.
+    # PRZYPADEK 1: KNOWLEDGE_BASE
+    if doc_type == "knowledge_base":
+        return f"""Jesteś asystentem Biura Obsługi Studenta. Pomagasz pracownikom dziekanatu.
 
 PYTANIE: "{query}"
 
@@ -533,23 +484,71 @@ TREŚĆ DOKUMENTU:
 {document['content']}
 
 INSTRUKCJE:
-1. Odpowiedz na pytanie WYŁĄCZNIE na podstawie treści dokumentu.
-2. Odpowiadaj WYŁĄCZNIE po polsku.
-3. Nie dodawaj informacji, których nie ma w dokumencie.
-4. Na końcu odpowiedzi podaj link do dokumentu i procent dopasowania w formacie:
-   [ścieżka/do/pliku] [dopasowanie%]
-
-PRZYKŁAD:
-Procedura składania wniosku o urlop dziekański:
-1. Złóż wniosek z uzasadnieniem.
-2. Dołącz wymagane dokumenty.
-3. Złóż w dziekanacie.
-
-data/urlopy/Urlop dziekański_Dean's leave.docx 85%
+1. Odpowiedz na pytanie WYŁĄCZNIE na podstawie tego dokumentu.
+2. Odpowiadaj po polsku.
+3. NIE cytuj dosłownie formularza (nie wypisuj pól).
+4. Jeśli to formularz/wniosek - wyjaśnij do czego służy i gdzie go złożyć.
+5. Na końcu podaj link i dopasowanie.
 
 ODPOWIEDŹ:"""
     
-    return prompt
+    # PRZYPADEK 2: SPECIAL_CASES
+    elif doc_type == "special_cases":
+        # Formatuj datę na DD.MM.YYYY
+        created_date = document.get('created_at', '')
+        if created_date and len(created_date) >= 10:
+            date_parts = created_date[:10].split('-')
+            created_date = f"{date_parts[2]}.{date_parts[1]}.{date_parts[0]}"
+        else:
+            created_date = "brak daty"
+        
+        return f"""Jesteś asystentem Biura Obsługi Studenta. Pomagasz pracownikom dziekanatu.
+
+PYTANIE: "{query}"
+
+ZNALEZIONY PRZYPADEK HISTORYCZNY:
+Tytuł: {document.get('title', 'unknown')}
+Opis: {document.get('description', 'Brak opisu')}
+Rozwiązanie: {document.get('solution', 'Brak rozwiązania')}
+Dopasowanie: {document['confidence']}%
+
+INSTRUKCJE:
+1. To jest historyczny przypadek rozwiązania podobnego problemu.
+2. Wyjaśnij dlaczego ten przypadek pasuje do pytania.
+3. Opisz jak rozwiązano ten przypadek.
+4. Odpowiadaj po polsku.
+5. Użyj formatu z poniższego przykładu.
+
+ODPOWIEDŹ:
+---
+Przypadek nr: {document.get('case_id', 'unknown')}
+Podobieństwo: {document['confidence']}%
+Uzasadnienie dopasowania: [napisz 1-2 zdania dlaczego ten przypadek pasuje]
+Data: {created_date}
+Tytuł: {document.get('title', 'unknown')}
+Autor: {document.get('author', 'Nieznany')}
+Opis: {document.get('description', 'Brak opisu')}
+Rozwiązanie: {document.get('solution', 'Brak rozwiązania')}
+Uwagi: {document.get('notes', document.get('additional_notes', 'Brak uwag'))}
+---"""
+    
+    # PRZYPADEK 3: BRAK INFORMACJI (gdy dokument jest None lub nieznany typ)
+    else:
+        return f"""Jesteś asystentem Biura Obsługi Studenta.
+
+PYTANIE: "{query}"
+
+Nie znaleziono odpowiednich dokumentów w bazie wiedzy.
+
+INSTRUKCJE:
+1. Poinformuj użytkownika, że nie znaleziono informacji.
+2. Zaproponuj wygenerowanie nowego dokumentu.
+3. Odpowiadaj po polsku.
+
+ODPOWIEDŹ:
+Nie posiadam informacji na ten temat w aktualnej bazie wiedzy.
+
+Czy chcesz, abym wygenerował dokument z procedurą?"""
 
 
 def parse_rag_response(raw_response: str, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -594,624 +593,3 @@ def parse_rag_response(raw_response: str, documents: List[Dict[str, Any]]) -> Di
     }
 
 
-# def search_similar_case(query: str) -> Dict[str, Any]:
-#     """
-#     Enhanced search with RAG and Generation Capability
-#     """
-#     global LAST_SEARCH_CONTEXT
-    
-#     try:
-#         # 0. Check for explicit generation intent FIRST
-#         is_generation = detect_generation_intent(query)
-#         category = classify_query_category(query)
-        
-#         # Handle "Confirmation" of generation (e.g. "Tak, wygeneruj")
-#         topic_to_generate = query
-        
-#         if is_generation:
-#             clean_query = query.lower().strip()
-#             # If query is short (e.g. "tak wygeneruj") and we have context, use context
-#             if len(clean_query.split()) < 6 and LAST_SEARCH_CONTEXT["query"]:
-#                 print(f"DEBUG: Detected confirmation for previous topic: {LAST_SEARCH_CONTEXT['query']}")
-#                 topic_to_generate = LAST_SEARCH_CONTEXT["query"]
-#                 if LAST_SEARCH_CONTEXT["category"] != ALL_CATEGORIES_KEY:
-#                     category = LAST_SEARCH_CONTEXT["category"]
-        
-#         if is_generation:
-#             print(f"\n=== GENERATION REQUEST DETECTED ===")
-#             print(f"Query: {query}")
-#             print(f"Topic used for generation: {topic_to_generate}")
-#             print(f"Category: {category}")
-            
-#             # Generate the document using the proper topic
-#             file_info = document_generator.generate_document(topic_to_generate, category)
-            
-#             if file_info.get("success"):
-#                 download_url = file_info.get("download_url", "")
-#                 filename = file_info.get("name", "dokument.docx")
-                
-#                 response_msg = (
-#                     f"Zgodnie z Twoją prośbą wygenerowałem dokument na temat: '{topic_to_generate}'.\n"
-#                     f"Został on zapisany w kategorii '{category}'.\n\n"
-#                     f"📄 **Nazwa pliku:** {filename}\n"
-#                     f"🔗 **Link do pobrania:** {download_url}"
-#                 )
-                
-#                 # Clear context after successful generation
-#                 LAST_SEARCH_CONTEXT = {"query": None, "category": None}
-                
-#                 return {
-#                     "found": True,
-#                     "generated_file": file_info,
-#                     "message": response_msg,
-#                     "query": query,
-#                     "category": category,
-#                     "response_type": "generated_document"
-#                 }
-#             else:
-#                 return {
-#                     "found": False,
-#                     "message": f"Wystąpił błąd podczas generowania dokumentu: {file_info.get('error')}",
-#                     "query": query
-#                 }
-
-#         # 1. Standard RAG Search
-#         print(f"\n{'='*60}")
-#         print(f"🔍 RAG SEARCH")
-#         print(f"{'='*60}")
-#         print(f"Query: '{query}'")
-#         print(f"LLM Category: {category}")
-#         print(f"{'='*60}")
-        
-#         # 2. Search ALL documents in this category
-#         search_results = search_by_category(query, category=category)
-        
-#         # 3. DEBUG: Print all raw results with their confidence scores
-#         print(f"\n RAW SEARCH RESULTS ({len(search_results)} total):")
-#         print(f"{'-'*60}")
-        
-#         # Group by collection type for better visibility
-#         knowledge_results = [r for r in search_results if r.get("collection") == "knowledge_base"]
-#         special_results = [r for r in search_results if r.get("collection") == "special_cases"]
-        
-#         print(f"\n📚 KNOWLEDGE BASE RESULTS ({len(knowledge_results)}):")
-#         if knowledge_results:
-#             for i, r in enumerate(knowledge_results, 1):
-#                 confidence = r.get("confidence", 0)
-#                 filename = r.get("filename", "Unknown")
-#                 category = r.get("category", "Unknown")
-#                 score = r.get("score", 0)
-                
-#                 # Highlight high confidence results
-#                 if confidence >= 45:
-#                     marker = "HIGH CONFIDENCE"
-#                 elif confidence >= 20:
-#                     marker = "MEDIUM CONFIDENCE"
-#                 else:
-#                     marker = "LOW CONFIDENCE"
-                
-#                 print(f"\n  [{i}] {marker}")
-#                 print(f"      File: {filename}")
-#                 print(f"      Category: {category}")
-#                 print(f"      Confidence: {confidence}%")
-#                 print(f"      Raw score: {score:.4f}")
-                
-#                 # Show first 100 chars of content
-#                 content = r.get("content", "")
-#                 if content:
-#                     print(f"      Preview: {content[:100].replace(chr(10), ' ')}...")
-                
-#                 # Group documents by source file
-#                 source = r.get("source", "")
-#                 if source:
-#                     # Extract just the filename from path
-#                     from pathlib import Path
-#                     source_filename = Path(source).name
-#                     print(f"      Source file: {source_filename}")
-#         else:
-#             print("  No results from knowledge_base")
-        
-#         print(f"\n📋 SPECIAL CASES RESULTS ({len(special_results)}):")
-#         if special_results:
-#             for i, r in enumerate(special_results, 1):
-#                 confidence = r.get("confidence", 0)
-#                 metadata = r.get("metadata", {})
-#                 title = metadata.get("title", "Unknown")
-                
-#                 if confidence >= 45:
-#                     marker = "✅ HIGH CONFIDENCE"
-#                 elif confidence >= 20:
-#                     marker = "⚠️ MEDIUM CONFIDENCE"
-#                 else:
-#                     marker = "❌ LOW CONFIDENCE"
-                
-#                 print(f"\n  [{i}] {marker}")
-#                 print(f"      Title: {title}")
-#                 print(f"      Confidence: {confidence}%")
-#                 print(f"      Raw score: {r.get('score', 0):.4f}")
-                
-#                 if metadata.get('description'):
-#                     print(f"      Description: {metadata['description'][:100]}...")
-#         else:
-#             print("  No results from special_cases")
-        
-#         # 4. Filter low confidence results (<20%)
-#         filtered_results = [r for r in search_results if r.get("confidence", 0) >= 20]
-        
-#         print(f"\n🔍 FILTERING RESULTS:")
-#         print(f"   Total results: {len(search_results)}")
-#         print(f"   After 20% threshold: {len(filtered_results)}")
-#         print(f"   Removed: {len(search_results) - len(filtered_results)} low confidence results")
-        
-#         # 5. Check for high confidence matches (>45%)
-#         high_confidence_matches = [r for r in filtered_results if r.get("confidence", 0) >= 45]
-        
-#         # Group high confidence matches by source file to see unique documents
-#         unique_documents = {}
-#         for r in high_confidence_matches:
-#             source = r.get("source", "unknown")
-#             filename = r.get("filename", "Unknown")
-#             if source not in unique_documents:
-#                 unique_documents[source] = {
-#                     "filename": filename,
-#                     "confidence": r.get("confidence", 0),
-#                     "category": r.get("category", "Unknown")
-#                 }
-        
-#         print(f"\n🎯 HIGH CONFIDENCE MATCHES ({len(high_confidence_matches)} total chunks):")
-#         if high_confidence_matches:
-#             print(f"   Unique documents: {len(unique_documents)}")
-#             for i, (source, info) in enumerate(unique_documents.items(), 1):
-#                 print(f"\n   [{i}] {info['filename']}")
-#                 print(f"       Category: {info['category']}")
-#                 print(f"       Max confidence: {info['confidence']}%")
-                
-#                 # Show all chunks for this document
-#                 doc_chunks = [r for r in high_confidence_matches if r.get("source") == source]
-#                 if len(doc_chunks) > 1:
-#                     print(f"       Chunks: {len(doc_chunks)} chunks (confidence range: {min(c.get('confidence',0) for c in doc_chunks)}-{max(c.get('confidence',0) for c in doc_chunks)}%)")
-#         else:
-#             print("   ❌ No high confidence matches found!")
-            
-#             # Additional debugging: check if documents exist in this category
-#             print(f"\n📊 CATEGORY CONTENT DEBUG:")
-#             try:
-#                 # Check if any documents exist in this category at all
-#                 collection_name = qdrant_service.collections.get("knowledge_base")
-#                 if collection_name:
-#                     from qdrant_client.models import Filter, FieldCondition, MatchValue
-                    
-#                     count_result = qdrant_service.client.count(
-#                         collection_name=collection_name,
-#                         count_filter=Filter(
-#                             must=[
-#                                 FieldCondition(
-#                                     key="metadata.category",
-#                                     match=MatchValue(value=category)
-#                                 )
-#                             ]
-#                         )
-#                     )
-#                     print(f"   Category '{category}': {count_result.count} total chunks")
-                    
-#                     if count_result.count == 0:
-#                         print(f"   ⚠️ No documents at all in category '{category}'!")
-#                         print(f"   Available categories might be: {KNOWLEDGE_BASE_CATEGORIES}")
-                        
-#                         # Show sample of categories that do exist
-#                         sample_points = qdrant_service.client.scroll(
-#                             collection_name=collection_name,
-#                             limit=10,
-#                             with_payload=True
-#                         )[0]
-                        
-#                         existing_categories = set()
-#                         for point in sample_points:
-#                             cat = point.payload.get("metadata", {}).get("category")
-#                             if cat:
-#                                 existing_categories.add(cat)
-                        
-#                         print(f"   Found categories in DB: {sorted(existing_categories)}")
-#             except Exception as e:
-#                 print(f"   Error checking category content: {e}")
-        
-#         if not high_confidence_matches:
-#             print(f"\n💡 No high confidence results found. Proposing generation.")
-            
-#             # SAVE CONTEXT for potential generation next turn
-#             LAST_SEARCH_CONTEXT["query"] = query
-#             LAST_SEARCH_CONTEXT["category"] = category
-            
-#             # Use LLM to formulate a polite refusal with suggestion
-#             prompt = f"""Użytkownik pyta o: "{query}".
-# Przeszukałeś bazę wiedzy i znalazłeś {len(search_results)} dokumentów, ale wszystkie mają niskie dopasowanie (poniżej 45%).
-# Najlepsze dopasowanie: {max([r.get('confidence',0) for r in search_results]) if search_results else 0}%
-
-# Twoim zadaniem jest:
-# 1. Poinformować użytkownika, że nie znalazłeś satysfakcjonujących dokumentów w obecnej bazie.
-# 2. Zapytać użytkownika, czy chce, abyś wygenerował (stworzył) ten dokument teraz.
-# 3. Poinstruować go, że jeśli się zgadza, wystarczy że napisze: "Tak, wygeneruj".
-
-# Odpowiedz krótko i konkretnie w języku polskim."""
-            
-#             suggestion_response = llm_service.generate_response(prompt, temperature=0.3)
-            
-#             return {
-#                 "found": False,
-#                 "message": suggestion_response,
-#                 "query": query,
-#                 "category": category,
-#                 "total_results": len(filtered_results),
-#                 "response_type": "not_found_suggestion",
-#                 "debug_info": {
-#                     "total_chunks_retrieved": len(search_results),
-#                     "knowledge_base_chunks": len(knowledge_results),
-#                     "special_cases": len(special_results),
-#                     "max_confidence": max([r.get('confidence',0) for r in search_results]) if search_results else 0,
-#                     "category_content_count": count_result.count if 'count_result' in locals() else "unknown"
-#                 }
-#             }
-        
-#         # If we have good results, proceed with standard RAG response
-#         print(f"\n✅ Found {len(high_confidence_matches)} high confidence chunks from {len(unique_documents)} documents")
-#         print(f"\n📝 Generating response...")
-        
-#         # 4. Build prompt
-#         prompt = build_enhanced_prompt(query, filtered_results, category)
-        
-#         # 5. Generate response
-#         response = llm_service.generate_response(prompt)
-        
-#         # 6. Parse response
-#         result = parse_rag_response(response, filtered_results)
-        
-#         # Add metadata
-#         result["query"] = query
-#         result["category"] = category
-#         result["total_results"] = len(filtered_results)
-#         result["high_confidence_results"] = len(high_confidence_matches)
-#         result["unique_documents"] = len(unique_documents)
-        
-#         return result
-        
-#     except Exception as e:
-#         print(f"ERROR in search_similar_case: {str(e)}")
-#         import traceback
-#         traceback.print_exc()
-#         return {
-#             "found": False,
-#             "message": f"System error: {str(e)}",
-#             "query": query
-#         }
-
-# def search_similar_case(query: str) -> Dict[str, Any]:
-#     """
-#     Enhanced search with RAG and Generation Capability
-#     """
-#     global LAST_SEARCH_CONTEXT
-    
-#     try:
-#         # 0. Check for explicit generation intent FIRST
-#         is_generation = detect_generation_intent(query)
-#         category = classify_query_category(query)
-        
-#         # Handle "Confirmation" of generation (e.g. "Tak, wygeneruj")
-#         topic_to_generate = query
-        
-#         if is_generation:
-#             clean_query = query.lower().strip()
-#             # If query is short (e.g. "tak wygeneruj") and we have context, use context
-#             if len(clean_query.split()) < 6 and LAST_SEARCH_CONTEXT["query"]:
-#                 print(f"DEBUG: Detected confirmation for previous topic: {LAST_SEARCH_CONTEXT['query']}")
-#                 topic_to_generate = LAST_SEARCH_CONTEXT["query"]
-#                 if LAST_SEARCH_CONTEXT["category"] != ALL_CATEGORIES_KEY:
-#                     category = LAST_SEARCH_CONTEXT["category"]
-        
-#         if is_generation:
-#             print(f"\n=== GENERATION REQUEST DETECTED ===")
-#             print(f"Query: {query}")
-#             print(f"Topic used for generation: {topic_to_generate}")
-#             print(f"Category: {category}")
-            
-#             # Generate the document using the proper topic
-#             file_info = document_generator.generate_document(topic_to_generate, category)
-            
-#             if file_info.get("success"):
-#                 # POPRAWKA: Dodanie linku i nazwy pliku bezpośrednio do treści wiadomości
-#                 download_url = file_info.get("download_url", "")
-#                 filename = file_info.get("name", "dokument.docx")
-                
-#                 response_msg = (
-#                     f"Zgodnie z Twoją prośbą wygenerowałem dokument na temat: '{topic_to_generate}'.\n"
-#                     f"Został on zapisany w kategorii '{category}'.\n\n"
-#                     f"📄 **Nazwa pliku:** {filename}\n"
-#                     f"🔗 **Link do pobrania:** {download_url}"
-#                 )
-                
-#                 # Clear context after successful generation
-#                 LAST_SEARCH_CONTEXT = {"query": None, "category": None}
-                
-#                 return {
-#                     "found": True,
-#                     "generated_file": file_info,
-#                     "message": response_msg,
-#                     "query": query,
-#                     "category": category,
-#                     "response_type": "generated_document"
-#                 }
-#             else:
-#                 return {
-#                     "found": False,
-#                     "message": f"Wystąpił błąd podczas generowania dokumentu: {file_info.get('error')}",
-#                     "query": query
-#                 }
-
-#         # 1. Standard RAG Search
-#         print(f"\n=== RAG SEARCH ===")
-#         print(f"Query: '{query}'")
-#         print(f"LLM Category: {category}")
-        
-#         # 2. Search ALL documents in this category
-#         search_results = search_by_category(query, category=category)
-        
-#         # 3. Filter low confidence results (<20%)
-#         filtered_results = [r for r in search_results if r.get("confidence", 0) >= 20]
-        
-#         # NEW LOGIC: Handling "Not Found" with generation proposal
-#         # Check if we have any high confidence matches (>45%)
-#         high_confidence_matches = [r for r in filtered_results if r.get("confidence", 0) >= 45]
-        
-#         if not high_confidence_matches:
-#             print(f"No high confidence results found. Proposing generation.")
-            
-#             # SAVE CONTEXT for potential generation next turn
-#             LAST_SEARCH_CONTEXT["query"] = query
-#             LAST_SEARCH_CONTEXT["category"] = category
-            
-#             # Use LLM to formulate a polite refusal with suggestion
-#             prompt = f"""Użytkownik pyta o: "{query}".
-# Przeszukałeś bazę wiedzy i nie znalazłeś satysfakcjonujących dokumentów (wyniki są słabe).
-# Twoim zadaniem jest:
-# 1. Poinformować użytkownika, że nie znalazłeś takiego dokumentu w obecnej bazie.
-# 2. Zapytać użytkownika, czy chce, abyś wygenerował (stworzył) ten dokument teraz.
-# 3. Poinstruować go, że jeśli się zgadza, wystarczy że napisze: "Tak, wygeneruj".
-
-# Odpowiedz krótko i konkretnie w języku polskim."""
-            
-#             suggestion_response = llm_service.generate_response(prompt, temperature=0.3)
-            
-#             return {
-#                 "found": False,
-#                 "message": suggestion_response,
-#                 "query": query,
-#                 "category": category,
-#                 "total_results": len(filtered_results),
-#                 "response_type": "not_found_suggestion"
-#             }
-        
-#         # If we have good results, proceed with standard RAG response
-#         print(f"Results after confidence filter: {len(filtered_results)}/{len(search_results)}")
-        
-#         # 4. Build prompt
-#         prompt = build_enhanced_prompt(query, filtered_results, category)
-        
-#         # 5. Generate response
-#         response = llm_service.generate_response(prompt)
-        
-#         # 6. Parse response
-#         result = parse_rag_response(response, filtered_results)
-        
-#         # Add metadata
-#         result["query"] = query
-#         result["category"] = category
-#         result["total_results"] = len(filtered_results)
-#         result["high_confidence_results"] = len(high_confidence_matches)
-        
-#         return result
-        
-#     except Exception as e:
-#         print(f"ERROR in search_similar_case: {str(e)}")
-#         import traceback
-#         traceback.print_exc()
-#         return {
-#             "found": False,
-#             "message": f"System error: {str(e)}",
-#             "query": query
-#         }
-
-def build_enhanced_prompt(query: str, search_results: List[Dict[str, Any]], category: str = None) -> str:
-    """
-    Build prompt with clear document type differentiation
-    """
-    # Separate special_cases from knowledge_base documents
-    special_cases_results = []
-    knowledge_docs_results = []
-    
-    for result in search_results:
-        if result.get("type") == "Form Response" or result.get("collection") == "special_cases":
-            special_cases_results.append(result)
-        else:
-            knowledge_docs_results.append(result)
-    
-    # Take top results
-    top_special_cases = special_cases_results[:3]  # Max 3 special cases
-    top_knowledge_docs = knowledge_docs_results[:3]  # Max 3 knowledge docs
-    
-    # Prepare context text
-    context_text = ""
-    
-    # Add special cases if any
-    if top_special_cases:
-        context_text += "### HISTORYCZNE PRZYPADKI (SPECIAL CASES):\n\n"
-        for i, case in enumerate(top_special_cases):
-            metadata = case.get("metadata", {})
-            context_text += f"[Przypadek {i+1}]\n"
-            context_text += f"ID: {metadata.get('case_id', 'unknown')}\n"
-            context_text += f"Tytuł: {metadata.get('title', 'unknown')}\n"
-            context_text += f"Autor: {metadata.get('author', 'unknown')}\n"
-            context_text += f"Opis: {metadata.get('description', '')}\n"
-            context_text += f"Rozwiązanie: {metadata.get('solution', '')}\n"
-            context_text += f"Uwagi: {metadata.get('notes', '')}\n"
-            context_text += f"Podobieństwo wyszukiwania: {case.get('confidence', 0)}%\n\n"
-    
-    # Add knowledge documents if any
-    if top_knowledge_docs:
-        context_text += "### DOKUMENTY (KNOWLEDGE BASE):\n\n"
-        for i, doc in enumerate(top_knowledge_docs):
-            file_path = doc.get("source", "").replace("/app/qdrant_data/", "data/")
-            context_text += f"[Dokument {i+1}]\n"
-            context_text += f"Plik: {doc.get('filename', 'unknown')}\n"
-            context_text += f"Ścieżka: {file_path}\n"
-            context_text += f"Kategoria: {doc.get('category', 'unknown')}\n"
-            
-            # Content preview (truncated)
-            content = doc.get('content', '')
-            if len(content) > 400:
-                content = content[:397] + "..."
-            
-            context_text += f"Zawartość: {content}\n"
-            context_text += f"Podobieństwo wyszukiwania: {doc.get('confidence', 0)}%\n\n"
-    
-    if not context_text:
-        context_text = "BRAK DOPASOWANYCH MATERIAŁÓW."
-    
-    # Simple, clear prompt
-    prompt = f"""Jesteś asystentem Biura Obsługi Studenta w systemie uczelnianym i współpracujesz z jego pracownikami. Otrzymujesz pytanie i materiały źródłowe.
-
-PYTANIE: "{query}"
-
-MATERIAŁY ŹRÓDŁOWE:
-{context_text}
-
-INSTRUKCJE:
-
-1. ANALIZUJ materiały i odpowiadaj WYŁĄCZNIE na ich podstawie.
-2. Odpowiadaj WYŁĄCZNIE po polsku.
-3. Nie wymyślaj informacji.
-
-FORMAT ODPOWIEDZI:
-
-JEŚLI MASZ DOPASOWANE DOKUMENTY Z KNOWLEDGE_BASE:
-[Odpowiedź na pytanie w formie krótkiej instrukcji/procedury po polsku]
-
-[link do dokumentu] [dopasowanie%]
-
-PRZYKŁAD:
-Procedura składania wniosku o urlop dziekańskiego:
-
-1. Złóż wniosek z szczegółowym uzasadnieniem.
-2. Dołącz wymagane dokumenty (zaświadczenia lekarskie, opinie).
-3. Zanieś komplet dokumentów do dziekanatu.
-4. Oczekuj na decyzję dziekana.
-
-data/urlopy/wniosek_urlop_dziekanski.docx 85%
-
-JEŚLI MASZ DOPASOWANE PRZYPADKI Z SPECIAL_CASES:
----
-Przypadek nr: [case_id]
-Podobieństwo: [80-100]%
-Uzasadnienie dopasowania: [dlaczego pasuje]
-Data: [DD.MM.YYYY]
-Tytuł: [tytuł]
-Autor: [autor]
-Opis: [opis]
-Rozwiązanie: [rozwiązanie]
-Uwagi: [uwagi]
----
-
-JEŚLI NIE MASZ INFORMACJI:
-Nie posiadam informacji na ten temat w aktualnej bazie wiedzy.
-
-Rozpocznij odpowiedź:
-"""
-    
-    return prompt
-
-def parse_rag_response(raw_response: str, search_results: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Parse response with clear document type differentiation
-    """
-    raw_response = raw_response.strip()
-    
-    # Check for special cases format
-    has_special_case_format = "---\nPrzypadek nr:" in raw_response
-    
-    # Separate sources
-    special_cases = [r for r in search_results if r.get("collection") == "special_cases"]
-    knowledge_docs = [r for r in search_results if r.get("collection") == "knowledge_base"]
-    
-    # Find best matches
-    best_special_case = sorted(special_cases, key=lambda x: x.get("confidence", 0), reverse=True)[0] if special_cases else None
-    best_knowledge_doc = sorted(knowledge_docs, key=lambda x: x.get("confidence", 0), reverse=True)[0] if knowledge_docs else None
-    
-    # Extract sources and paths
-    sources = []
-    file_paths = []
-    similarity = 0
-    
-    # Handle special case response
-    if has_special_case_format:
-        # Parse special case info from response
-        import re
-        
-        # Extract case_id if present
-        case_id_match = re.search(r'Przypadek nr:\s*([^\n]+)', raw_response)
-        case_id = case_id_match.group(1).strip() if case_id_match else "unknown"
-        
-        # Extract similarity
-        sim_match = re.search(r'Podobieństwo:\s*(\d+)%', raw_response)
-        if sim_match:
-            similarity = int(sim_match.group(1))
-        
-        if best_special_case:
-            sources.append({
-                "type": "special_case",
-                "case_id": case_id,
-                "title": best_special_case.get("metadata", {}).get("title", "unknown"),
-                "similarity": similarity
-            })
-    
-    # Handle knowledge document response
-    else:
-        # Look for document link in response
-        import re
-        
-        # Extract document path and similarity from response
-        link_pattern = r'(data/[^\s]+)\s+(\d+)%'
-        matches = re.findall(link_pattern, raw_response)
-        
-        for link, sim in matches:
-            file_paths.append(link)
-            if int(sim) > similarity:
-                similarity = int(sim)
-        
-        # Add knowledge document sources
-        if best_knowledge_doc:
-            source_path = best_knowledge_doc.get("source", "")
-            user_path = source_path.replace("/app/qdrant_data/", "data/")
-            
-            sources.append({
-                "type": "document",
-                "filename": best_knowledge_doc.get("filename", "Unknown"),
-                "path": user_path,
-                "confidence": best_knowledge_doc.get("confidence", 0)
-            })
-            
-            if not file_paths:  # If no link found in text, add from best doc
-                file_paths.append(user_path)
-                similarity = best_knowledge_doc.get("confidence", 0)
-    
-    # Check if no information found
-    found = True
-    if "nie posiadam informacji" in raw_response.lower() or "brak informacji" in raw_response.lower():
-        found = False
-    
-    return {
-        "found": found,
-        "response": raw_response,
-        "sources": sources,
-        "file_paths": file_paths,
-        "results_count": len(search_results),
-        "similarity": similarity,
-        "response_type": "special_case" if has_special_case_format else "knowledge_doc"
-    }

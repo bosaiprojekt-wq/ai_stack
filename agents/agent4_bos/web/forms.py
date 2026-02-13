@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Form, Request, BackgroundTasks
+
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 import os
 from datetime import datetime
@@ -7,26 +8,24 @@ import time
 
 # Import from core modules
 from core.config import SPECIAL_CASES_PATH
-from core.qdrant_service import save_case as save_case_to_qdrant
+from core.document_ingestor import document_ingestor
 
 # Create sub-app
 form_app = FastAPI(title="Form Application", description="HTML form for adding cases")
 
-def save_form_as_docx_and_qdrant(title: str, author: str, description: str, solution: str, notes: str = "") -> dict:
-    # Save the submitted form as a DOCX file and immediately persist to Qdrant
-    """Save form response as DOCX file AND directly to Qdrant"""
+def save_form_as_docx(title: str, author: str, description: str, solution: str, notes: str = "") -> dict:
+    """Save form response as DOCX file - watcher zajmie się Qdrantem"""
     try:
         # Create directory if it doesn't exist
         os.makedirs(SPECIAL_CASES_PATH, exist_ok=True)
         
         # Generate filename with timestamp
-        timestamp = int(time.time())
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_title = "".join(c if c.isalnum() or c in " _-" else "_" for c in title)[:50]
         filename = f"form_{date_str}_{safe_title}.docx"
         filepath = os.path.join(SPECIAL_CASES_PATH, filename)
         
-        # 1. Create DOCX document
+        # Create DOCX document
         doc = Document()
         
         # Add title
@@ -35,7 +34,7 @@ def save_form_as_docx_and_qdrant(title: str, author: str, description: str, solu
         # Add metadata
         doc.add_paragraph(f'Autor: {author}')
         doc.add_paragraph(f'Data utworzenia: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
-        doc.add_paragraph(f'ID: FORM-{timestamp}')
+        doc.add_paragraph(f'ID: FORM-{int(time.time())}')
         doc.add_paragraph('-' * 50)
         
         # Add description
@@ -59,60 +58,25 @@ def save_form_as_docx_and_qdrant(title: str, author: str, description: str, solu
         doc.save(filepath)
         print(f"✓ DOCX saved: {filename}")
         
-        # 2. Save to Qdrant IMMEDIATELY
-        qdrant_result = save_case_to_qdrant(
-            title=title,
-            author=author,
-            description=description,
-            solution=solution,
-            notes=f"{notes} | Plik: {filename}"
-        )
-        
-        print(f"✓ Qdrant save result: {qdrant_result.get('status', 'unknown')}")
-        
-        # Extract text from DOCX for debugging
-        docx_text = extract_text_from_docx_for_debug(filepath)
-        print(f"✓ DOCX text extracted: {len(docx_text)} chars")
-        
         return {
             "filename": filename,
             "filepath": filepath,
             "docx_saved": True,
-            "qdrant_saved": qdrant_result.get('status') == 'success',
-            "qdrant_case_id": qdrant_result.get('case_id'),
-            "qdrant_message": qdrant_result.get('message', ''),
-            "docx_size": os.path.getsize(filepath),
-            "docx_preview": docx_text[:200] + "..." if len(docx_text) > 200 else docx_text
+            "docx_size": os.path.getsize(filepath)
         }
         
     except Exception as e:
-        print(f"✗ Error in save_form_as_docx_and_qdrant: {e}")
+        print(f"✗ Error in save_form_as_docx: {e}")
         import traceback
         traceback.print_exc()
         return {
             "filename": None,
             "error": str(e),
-            "docx_saved": False,
-            "qdrant_saved": False
+            "docx_saved": False
         }
 
-def extract_text_from_docx_for_debug(filepath: str) -> str:
-    # Return plain text extracted from a DOCX file for debugging/preview
-    """Extract text from DOCX for debugging purposes"""
-    try:
-        doc = Document(filepath)
-        text_parts = []
-        
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                text_parts.append(paragraph.text)
-        
-        return '\n'.join(text_parts)
-    except Exception as e:
-        return f"[Error extracting text: {str(e)}]"
 
-
-#form HTML
+# FORM_HTML - bez zmian
 FORM_HTML = """
 <!DOCTYPE html>
 <html>
@@ -192,8 +156,8 @@ FORM_HTML = """
         <h1>📝 Formularz przypadku</h1>
         
         <div class="info">
-            <strong>Informacja:</strong> Wypełnij formularz aby dodać nowy przypadek do bazy wiedzy Qdrant.
-            Po zapisaniu, przypadek będzie dostępny dla agenta AI i zapisany jako plik DOCX.
+            <strong>Informacja:</strong> Wypełnij formularz aby dodać nowy przypadek do bazy wiedzy.
+            Po zapisaniu, plik DOCX zostanie automatycznie zaimportowany przez system.
         </div>
         
         <div id="message" class="message"></div>
@@ -214,7 +178,7 @@ FORM_HTML = """
             <label>Uwagi dodatkowe (opcjonalne):</label>
             <textarea name="Uwagi" placeholder="Dodatkowe informacje, komentarze..."></textarea>
             
-            <button type="submit" class="submit-btn">💾 Zapisz przypadek (Qdrant + DOCX)</button>
+            <button type="submit" class="submit-btn">💾 Zapisz przypadek (DOCX + auto-import)</button>
         </form>
         
         <div style="margin-top: 20px; text-align: center;">
@@ -230,39 +194,31 @@ FORM_HTML = """
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.textContent;
             
-            // Show loading
             submitBtn.textContent = 'Zapisywanie...';
             submitBtn.disabled = true;
             
             try {
-                console.log('Form submitted with data:', Object.fromEntries(formData));
-                
                 const response = await fetch('/form/submit', {
                     method: 'POST',
                     body: formData
                 });
                 
-                console.log('Response status:', response.status);
                 const result = await response.json();
-                console.log('Response data:', result);
                 
                 if (result.status === 'success') {
-                    let message = '✅ Przypadek został pomyślnie zapisany!';
+                    let message = '✅ Przypadek został pomyślnie zapisany jako DOCX!';
                     if (result.docx_file) {
-                        message += `\\n📄 Plik DOCX: ${result.docx_file}`;
+                        message += `\\n📄 Plik: ${result.docx_file}`;
                     }
+                    message += '\\n\\n⏳ System automatycznie zaimportuje go do Qdrant za chwilę.';
                     showMessage('success', message);
-                    // Clear form
                     this.reset();
-                    console.log('Form cleared');
                 } else {
                     showMessage('error', '❌ Błąd: ' + (result.message || 'Nie udało się zapisać przypadku'));
                 }
             } catch (error) {
-                console.error('Error:', error);
                 showMessage('error', '❌ Błąd połączenia: ' + error.message);
             } finally {
-                // Restore button
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
             }
@@ -274,14 +230,10 @@ FORM_HTML = """
             msgDiv.textContent = text;
             msgDiv.style.display = 'block';
             
-            // Auto-hide after 8 seconds (longer for DOCX info)
             setTimeout(() => {
                 msgDiv.style.display = 'none';
             }, 8000);
         }
-        
-        // Debug: Log when page loads
-        console.log('Form page loaded');
     </script>
 </body>
 </html>
@@ -293,6 +245,7 @@ async def get_form(request: Request):
     """Serve the HTML form"""
     return HTMLResponse(FORM_HTML)
 
+
 @form_app.post("/submit")
 async def submit_case(
     Tytul: str = Form(...),
@@ -301,51 +254,39 @@ async def submit_case(
     Rozwiazanie: str = Form(...),
     Uwagi: str = Form("")
 ):
-    """Handle form submission - saves as DOCX AND directly to Qdrant"""
+    """Handle form submission - saves as DOCX, watcher handles Qdrant"""
     try:
         print(f"\n{'='*60}")
-        print("🔄 FORM SUBMISSION RECEIVED")
+        print("FORM SUBMISSION RECEIVED")
         print(f"Title: {Tytul}")
         print(f"Author: {Autor}")
-        print(f"Description length: {len(Opis)} chars")
-        print(f"Solution length: {len(Rozwiazanie)} chars")
         print('='*60)
         
-        # Save as DOCX AND to Qdrant
-        result = save_form_as_docx_and_qdrant(Tytul, Autor, Opis, Rozwiazanie, Uwagi)
+        result = save_form_as_docx(Tytul, Autor, Opis, Rozwiazanie, Uwagi)
         
         if not result.get("docx_saved"):
             return JSONResponse({
                 "status": "error",
                 "message": f"Błąd zapisu DOCX: {result.get('error', 'Unknown error')}"
             }, status_code=500)
+
         
-        # Prepare response
-        response_data = {
-            "status": "success",
-            "message": "Przypadek zapisany pomyślnie!",
-            "docx_file": result["filename"],
-            "qdrant_saved": result["qdrant_saved"],
-            "case_id": result.get("qdrant_case_id", "unknown"),
-            "details": {
-                "docx_size": result.get("docx_size", 0),
-                "docx_preview": result.get("docx_preview", "")
-            }
-        }
-        
-        if not result["qdrant_saved"]:
-            response_data["warning"] = "Przypadek zapisany jako DOCX, ale wystąpił problem z Qdrant"
-            response_data["qdrant_error"] = result.get("qdrant_message", "")
-        
-        print(f"\n✅ FORM SUBMISSION COMPLETE")
-        print(f"   DOCX: {result['filename']}")
-        print(f"   Qdrant: {'✓' if result['qdrant_saved'] else '✗'} {result.get('qdrant_case_id', '')}")
+        print(f"\n FORM SUBMISSION COMPLETE")
+        print(f"   DOCX saved: {result['filename']}")
+        print(f"   Waiting for auto-ingestion...")
         print('='*60)
         
-        return JSONResponse(response_data)
+        return JSONResponse({
+            "status": "success",
+            "message": "Przypadek zapisany jako DOCX. System zaimportuje go automatycznie.",
+            "docx_file": result["filename"],
+            "details": {
+                "docx_size": result.get("docx_size", 0)
+            }
+        })
         
     except Exception as e:
-        print(f"\n❌ FORM SUBMISSION ERROR: {e}")
+        print(f"\nFORM SUBMISSION ERROR: {e}")
         import traceback
         traceback.print_exc()
         
