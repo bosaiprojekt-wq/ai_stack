@@ -2,12 +2,13 @@ import time
 import requests
 from typing import Dict, Any
 
-
+#class: LLMService - handles interactions with the LLM using API 
 class LLMService:
     def __init__(self, model="llama3", base_url="http://ollama:11434"):
         self.model_name = model
         self.base_url = base_url
     
+    #method: generate response
     def generate_response(self, prompt: str, temperature: float = 0.1, max_tokens: int = 2000, max_retries: int = 3) -> str:
         """Generate LLM response with retry logic using direct Ollama API"""
         for attempt in range(max_retries):
@@ -37,6 +38,7 @@ class LLMService:
                     print(f"Failed after {max_retries} attempts: {str(e)}")
                     return f"Błąd podczas generowania odpowiedzi: {str(e)}"
     
+    #method: get LLM service information
     def get_info(self) -> Dict[str, Any]:
         """Get LLM service information"""
         return {

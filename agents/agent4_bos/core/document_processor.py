@@ -1,3 +1,4 @@
+#imports
 import os
 import time
 import hashlib
@@ -8,6 +9,7 @@ import docx
 from PyPDF2 import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+#class: DocumentProcessor - handles document processing (text extraction, chunking, metadata)
 class DocumentProcessor:
     def __init__(self, chunk_size=1000, chunk_overlap=200):
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -15,7 +17,8 @@ class DocumentProcessor:
             chunk_overlap=chunk_overlap,
             separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""]
         )
-    
+
+    #method: extract text from different file formats
     def extract_text(self, filepath: str) -> str:
         """Extract text from different file formats"""
         filepath = Path(filepath)
@@ -29,7 +32,8 @@ class DocumentProcessor:
                 return f.read()
         else:
             raise ValueError(f"Unsupported file format: {filepath.suffix}")
-    
+        
+    #method: extract text from DOCX file
     def _extract_from_docx(self, filepath: Path) -> str:
         """Extract text from DOCX file"""
         doc = docx.Document(filepath)
@@ -47,6 +51,7 @@ class DocumentProcessor:
         
         return "\n\n".join(text_parts)
     
+    #method: extract text from PDF file
     def _extract_from_pdf(self, filepath: Path) -> str:
         """Extract text from PDF file"""
         reader = PdfReader(filepath)
@@ -59,6 +64,7 @@ class DocumentProcessor:
         
         return "\n\n".join(text_parts)
     
+    #method: process file into chunks with metadata
     def process_file(self, filepath: str) -> List[Dict[str, Any]]:
         """Process a file into chunks with metadata"""
         filepath = Path(filepath)
@@ -107,6 +113,7 @@ class DocumentProcessor:
         
         return records
     
+    #method: determine category from file path
     def _determine_category(self, filepath: str) -> str:
         """Determine category from file path"""
         filepath_lower = filepath.lower()
@@ -124,6 +131,7 @@ class DocumentProcessor:
         else:
             return 'general'
     
+    #method: calculate MD5 hash of file
     def _calculate_file_hash(self, filepath: Path) -> str:
         """Calculate MD5 hash of file"""
         hash_md5 = hashlib.md5()

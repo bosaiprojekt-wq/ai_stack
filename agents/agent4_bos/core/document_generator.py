@@ -1,4 +1,4 @@
-# agent4_bos/core/document_generator.py
+#imoports
 import os
 import time
 from datetime import datetime
@@ -6,10 +6,13 @@ from docx import Document
 from .config import KNOWLEDGE_BASE_PATH, KNOWLEDGE_BASE_CATEGORIES, ALL_CATEGORIES_KEY
 from .llm_service import llm_service
 
+
+#class: DocumentGenerator - generates documents based on user input using LLM and saves them as DOCX files
 class DocumentGenerator:
     def __init__(self):
         self.output_dir = KNOWLEDGE_BASE_PATH
 
+    #method: generate document based on topic and category
     def generate_document(self, topic: str, category: str) -> dict:
         """
         Generates a DOCX document on the given topic in the specified category.
@@ -17,14 +20,15 @@ class DocumentGenerator:
         """
         print(f"GENERATOR: Rozpoczynam generowanie dokumentu. Temat: '{topic}', Kategoria: '{category}'")
         
-        # 1. Generowanie treści przez LLM
+        # LLM content generation
         content = self._generate_content_with_llm(topic)
         
-        # 2. Utworzenie pliku DOCX
+        # create DOCX file with the generated content
         file_info = self._create_docx_file(topic, content, category)
         
         return file_info
-
+    
+    #method: generate content with LLM based on the provided topic
     def _generate_content_with_llm(self, topic: str) -> dict:
         """Generates the title, filename and body of the document using LLM based on the provided topic."""
 
@@ -46,7 +50,7 @@ TREŚĆ:
 """
         response = llm_service.generate_response(prompt, temperature=0.4, max_tokens=2500)
         
-        # Robust parser - analiza linia po linii
+        # Robust parser - line by line analysis to extract filename, title, and body
         lines = response.strip().split('\n')
         suggested_filename = None
         title = None
@@ -76,7 +80,7 @@ TREŚĆ:
         
         body = "\n".join(body_lines).strip()
         
-        # Fallback - jeśli parsowanie się nie uda, użyj całej odpowiedzi jako treści
+        #fallback - if parsing fails, use the entire response as body
         if not body and not suggested_filename:
             body = response
             
@@ -85,25 +89,26 @@ TREŚĆ:
 
         return {"title": title, "body": body, "suggested_filename": suggested_filename}
 
+    #method: create a DOCX file with the generated content and save it in the appropriate folder
     def _create_docx_file(self, topic: str, content: dict, category: str) -> dict:
         """Tworzy fizyczny plik .docx i zapisuje go w odpowiednim folderze"""
         try:
             doc = Document()
             
-            # Nagłówek
+            # heading with the document title
             doc.add_heading(content['title'], 0)
             
-            # Metadane w dokumencie
+            # metadata in the document
             doc.add_paragraph(f"Data wygenerowania: {datetime.now().strftime('%Y-%m-%d')}")
             doc.add_paragraph(f"Kategoria: {category}")
             doc.add_paragraph("-" * 50)
             
-            # Treść właściwa
+            # content body
             for paragraph in content['body'].split('\n'):
                 if paragraph.strip():
                     doc.add_paragraph(paragraph.strip())
             
-            # Ustalenie ścieżki zapisu
+            # filepath generation
             target_category = category if category in KNOWLEDGE_BASE_CATEGORIES else "dane_osobowe"
             if category == ALL_CATEGORIES_KEY:
                 target_category = "dane_osobowe"
@@ -111,7 +116,7 @@ TREŚĆ:
             target_folder = os.path.join(self.output_dir, target_category)
             os.makedirs(target_folder, exist_ok=True)
             
-            # Generowanie bezpiecznej nazwy pliku
+            # name sanitization for filename
             base_name = content.get("suggested_filename")
             
 

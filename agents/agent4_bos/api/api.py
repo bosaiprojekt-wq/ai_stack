@@ -1,4 +1,3 @@
-# api/api.py
 from fastapi import Body, HTTPException
 from core.support_agent import search_similar_case
 from core.qdrant_service import load_all_cases, get_case_count
@@ -12,12 +11,10 @@ async def handle_support_request(query: str) -> dict:
     cases = load_all_cases()
 
     # Note: Even if database is empty, we might want to generate documents, 
-    # so we proceed instead of returning early if cases is empty,
-    # unless strictly required by previous logic.
-    # But for safety and existing logic compliance:
+    # so we proceed instead of returning early if cases is empty
+
     if not cases and get_case_count() == 0:
-        # Try to proceed anyway as we might generate documents?
-        # Reverting to original logic for consistency if DB is truly empty-empty
+        # Try to proceed anyway as we might generate documents
         pass
 
     try:
@@ -31,7 +28,7 @@ async def handle_support_request(query: str) -> dict:
             "source": "core_support_agent"
         }
         
-        # ADDED: Pass generated file info if present
+        # Pass generated file info if present
         if result.get("generated_file"):
             response["generated_file"] = result.get("generated_file")
             

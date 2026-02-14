@@ -1,3 +1,4 @@
+#import libraries
 from fastapi import FastAPI, Body, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +15,7 @@ from api.api import handle_support_request
 from core.document_ingestor import document_ingestor
 from core.config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH
 
+# Main application setup
 app = FastAPI(
     title="Agent4 BOS Support",
     description="Main application launcher with AI agent capabilities",
@@ -27,6 +29,7 @@ templates_dir = os.path.join(current_dir, "web", "templates")  # /app/web/templa
 print(f"Main app templates directory: {templates_dir}")  # Debug
 
 templates = Jinja2Templates(directory=templates_dir)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -38,6 +41,7 @@ app.add_middleware(
 
 # Mount data directory for generated files download
 # Maps http://host/data/... to local /app/qdrant_data/...
+
 if os.path.exists(BASE_DATA_PATH):
     app.mount("/data", StaticFiles(directory=BASE_DATA_PATH), name="data")
     print(f"Mounted /data to {BASE_DATA_PATH}")
@@ -190,10 +194,8 @@ async def get_file_paths():
     }
     
 
-print("=" * 60)
 print("Agent4 BOS Main Application Initialized")
 print(f"Form app mounted at: http://localhost:8004/form/")
 print(f"Chat app mounted at: http://localhost:8004/run_page/")
 print(f"Storage: Qdrant special case collection '{SPECIAL_CASES_COLLECTION}'") 
 print(f"Storage: Qdrant knowledge base collection '{KNOWLEDGE_BASE_COLLECTION}'")  
-print("=" * 60)

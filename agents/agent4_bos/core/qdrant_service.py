@@ -1,4 +1,4 @@
-# core/qdrant_service.py - UPDATED
+#imports
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct, Filter
 from sentence_transformers import SentenceTransformer
@@ -9,6 +9,7 @@ from .config import (
     KNOWLEDGE_BASE_COLLECTION,
 )
 
+# QdrantService class: Manages all interactions with Qdrant, including collection management, saving cases, and searching
 class QdrantService:
     def __init__(self, host=QDRANT_HOST, port=QDRANT_PORT):
         self.client = QdrantClient(host=host, port=port)
@@ -21,7 +22,8 @@ class QdrantService:
         }
         
         self._ensure_collections()
-    
+
+    # method: ensure collections exist
     def _ensure_collections(self):
         """Create collections if they don't exist"""
         for collection_name in self.collections.values():
@@ -38,6 +40,7 @@ class QdrantService:
             except Exception as e:
                 print(f"Error ensuring collection {collection_name}: {e}")
     
+    #method: clear collections (delete and recreate or clear contents)
     def clear_all_collections(self, delete_structure: bool = False):
         """
         Clear collections.
@@ -76,6 +79,7 @@ class QdrantService:
         
         print("Operation completed")
     
+    #method: clear collection contents (keep structure)
     def clear_collection_contents(self, collection: str):
         """Clear only contents of a collection (keep structure)"""
         collection_name = self.collections.get(collection)
@@ -94,6 +98,7 @@ class QdrantService:
             print(f"Error: {e}")
             return False
     
+    #method: search all documents in a category
     def search_all_in_category(self, query: str, category: str, collection: str = "knowledge_base") -> List[Dict[str, Any]]:
         """
         Search ALL documents in a specific category (no limit)
@@ -118,7 +123,7 @@ class QdrantService:
         )
         
         try:
-            # First, get count to know how many to retrieve
+            # count to know how many to retrieve
             count_result = self.client.count(
                 collection_name=collection_name,
                 count_filter=search_filter
@@ -135,7 +140,7 @@ class QdrantService:
                 collection_name=collection_name,
                 query_vector=query_embedding,
                 query_filter=search_filter,
-                limit=total_in_category  # Get ALL documents in category
+                limit=total_in_category 
             )
             
             # Format results
@@ -158,6 +163,7 @@ class QdrantService:
             print(f"Error searching all in category {category}: {e}")
             return []
     
+    #method: save case with duplicate prevention
     def save_case(self, case_data: Dict[str, Any], collection: str = "special_cases") -> Dict[str, Any]:
         """Save a case to Qdrant with duplicate prevention"""
         try:
@@ -265,7 +271,7 @@ class QdrantService:
                 "status": "error",
                 "message": f"Błąd zapisu do Qdrant: {str(e)}"
             }
-        
+    #method: save document chunk (for knowledge base)
     def save_document_chunk(self, chunk_data: Dict[str, Any], collection: str = "knowledge_base"):
         """Save a document chunk to Qdrant"""
         collection_name = self.collections.get(collection, KNOWLEDGE_BASE_COLLECTION)
@@ -291,6 +297,7 @@ class QdrantService:
         
         return point_id
     
+    #method: search across collections with optional category filter
     def search(self, query: str, collection: str = None, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Search across one or all collections
@@ -333,6 +340,7 @@ class QdrantService:
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:limit]
     
+    #method: search with category filter (for knowledge base)
     def search_with_filter(self, query: str, category: str = None, collection: str = "knowledge_base", limit: int = 10) -> List[Dict[str, Any]]:
         """
         Search with category filter
@@ -385,11 +393,12 @@ class QdrantService:
         except Exception as e:
             print(f"Error searching collection {collection_name} with filter: {e}")
             return []
-    
+    #method: get all cases in special_cases
     def get_all_cases(self) -> List[Dict[str, Any]]:
         """Get all cases from special_cases collection (for backward compatibility)"""
         return self._get_all_from_collection("special_cases")
     
+    #method: get all documents from a collection
     def _get_all_from_collection(self, collection: str) -> List[Dict[str, Any]]:
         """Get all documents from a collection"""
         collection_name = self.collections.get(collection)
@@ -412,10 +421,12 @@ class QdrantService:
             print(f"Error getting documents from {collection_name}: {e}")
             return []
     
+    #method: get case count in special_cases
     def get_case_count(self) -> int:
         """Get total number of cases in special_cases (for backward compatibility)"""
         return self._get_collection_count("special_cases")
     
+    #method: get document count in a collection
     def _get_collection_count(self, collection: str) -> int:
         """Get document count in a collection"""
         collection_name = self.collections.get(collection)
@@ -430,6 +441,7 @@ class QdrantService:
         except:
             return 0
     
+    #method: get database info (collections, counts, host info)
     def get_database_info(self) -> Dict[str, Any]:
         """Get comprehensive database information"""
         return {
@@ -448,7 +460,6 @@ class QdrantService:
             "qdrant_port": QDRANT_PORT
         }
 
-# Update the compatibility functions to use the new service
 
 # Singleton instance
 qdrant_service = QdrantService()

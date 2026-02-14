@@ -1,3 +1,4 @@
+#imports
 import os
 import time
 from pathlib import Path
@@ -5,23 +6,28 @@ from typing import List, Dict, Any
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+#dependency imports
 from .config import KNOWLEDGE_BASE_PATH, SPECIAL_CASES_PATH
 from .document_processor import document_processor
 from .qdrant_service import qdrant_service
 
-#ingestor class
+
+#class: DocumentIngestor - handles document ingestion from folders, processing, and saving to Qdrant
 class DocumentIngestor:
     def __init__(self):
         self.processed_files = {}
-        
+    
+    #method: ingest knowledge base documents
     def ingest_knowledge_base(self, force_reingest: bool = False) -> Dict[str, Any]:
         """Ingest all documents from knowledge_base folder"""
         return self._ingest_folder(KNOWLEDGE_BASE_PATH, "knowledge_base", force_reingest)
     
+    #method: ingest special cases documents
     def ingest_special_cases(self, force_reingest: bool = False) -> Dict[str, Any]:
         """Ingest all documents from special_cases folder (form responses)"""
         return self._ingest_folder(SPECIAL_CASES_PATH, "special_cases", force_reingest)
     
+    #method: ingest all documents from both folders
     def ingest_all(self, force_reingest: bool = False) -> Dict[str, Any]:
         """Ingest from both folders"""
         kb_result = self.ingest_knowledge_base(force_reingest)
@@ -36,6 +42,7 @@ class DocumentIngestor:
             }
         }
     
+    #method: ingest all documents from a folder
     def _ingest_folder(self, folder_path: str, collection: str, force_reingest: bool = False) -> Dict[str, Any]:
         """Ingest all documents from a folder"""
         folder = Path(folder_path)
@@ -107,6 +114,7 @@ class DocumentIngestor:
             "stats": stats
         }
     
+    #method: check if file should be skipped (already processed and not modified)
     def _should_skip(self, file_path: Path) -> bool:
         """Check if file should be skipped (already processed and not modified)"""
         file_str = str(file_path)
@@ -121,19 +129,22 @@ class DocumentIngestor:
         return current_mtime <= file_info["last_modified"]
 
 
-#watcher class 
+#class: FileWatcher - watches folders for new or modified files and triggers ingestion
 class FileWatcher(FileSystemEventHandler):
     def __init__(self, ingestor: DocumentIngestor):
         self.ingestor = ingestor
     
+    #method: handle file creation event
     def on_created(self, event):
         if not event.is_directory:
             self._process_file(event.src_path)
     
+    #method: handle file modification event
     def on_modified(self, event):
         if not event.is_directory:
             self._process_file(event.src_path)
     
+    #method: process a single file when created or modified
     def _process_file(self, file_path: str):
         """Process a single file when created or modified"""
         file_path_obj = Path(file_path)
@@ -166,6 +177,7 @@ class FileWatcher(FileSystemEventHandler):
         except Exception as e:
             print(f"Auto-ingestion failed: {e}")
 
+#function: start file watcher to monitor folders for changes
 def start_file_watcher():
     # Launch a filesystem observer
     """Start watching folders for changes"""
